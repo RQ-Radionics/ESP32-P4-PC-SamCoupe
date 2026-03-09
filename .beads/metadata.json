@@ -1,0 +1,7 @@
+{
+  "database": "dolt",
+  "backend": "dolt",
+  "dolt_mode": "server",
+  "dolt_database": "SamCoupe",
+  "project_id": "92a200fd-fd7c-4980-9718-934bd77d1794"
+}
