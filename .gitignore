@@ -1,4 +1,13 @@
+# ESP-IDF build artifacts
+build/
+sdkconfig
+sdkconfig.old
+dependencies.lock
+managed_components/
 
-# Dolt database files (added by bd init)
-.dolt/
-*.db
+# macOS
+.DS_Store
+
+# Editor
+.cache/
+.claude/

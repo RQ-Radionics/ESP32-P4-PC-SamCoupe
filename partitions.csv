@@ -1,0 +1,14 @@
+# SimCoupe ESP32-P4-PC partition table
+#
+# Flash: 16 MB total
+#   nvs      :  24 KB  — NVS (options, WiFi credentials)
+#   phy_init :   4 KB  — PHY calibration data
+#   factory  :   8 MB  — SimCoupe application (large: C++ core + libs)
+#   roms     :   1 MB  — SAM Coupé ROMs embedded in flash (SPIFFS)
+#                        samcoupe.rom (32KB), atom.rom, atomlite.rom, sp0256-al2.bin
+#
+# Name,   Type, SubType, Offset,  Size, Flags
+nvs,      data, nvs,     0x9000,  0x6000,
+phy_init, data, phy,     0xF000,  0x1000,
+factory,  app,  factory, 0x10000, 8M,
+roms,     data, spiffs,  0x810000,1M,
