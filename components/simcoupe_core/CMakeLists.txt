@@ -234,4 +234,7 @@ target_compile_definitions(${COMPONENT_LIB} PRIVATE
     FMT_STATIC_THOUSANDS_SEPARATOR
     # libspectrum version string (normally set by autoconf)
     VERSION=\"1.0\"
+    # SPEED TEST STUB: discard audio without I2S write — measures pure Z80+video speed.
+    # Remove this line to restore real audio output.
+    AUDIO_STUB
 )
