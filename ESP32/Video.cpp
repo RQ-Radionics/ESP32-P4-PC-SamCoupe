@@ -184,6 +184,7 @@ void ESP32Video::Update(const FrameBuffer& fb)
     static int  s_vdiag_skip  = 400;
     static int  s_vdiag_count = 0;
     int64_t vt0 = 0, vt1 = 0, vt2 = 0;
+    int64_t s_expand_us = 0, s_copy_us = 0;
     bool vdiag = (s_vdiag_skip == 0 && s_vdiag_count < 5);
     if (s_vdiag_skip > 0) s_vdiag_skip--;
     if (vdiag) vt0 = esp_timer_get_time();
@@ -247,18 +248,22 @@ void ESP32Video::Update(const FrameBuffer& fb)
             // Sequential DRAM writes are fast; two bulk memcpy beats 2× scatter.
             uint8_t row_buf[SAM_W * 3];
             uint8_t* p = row_buf;
+            if (vdiag) s_expand_us -= esp_timer_get_time();
             for (int sx = 0; sx < render_w; ++sx)
             {
                 const PaletteEntry& e = m_palette[src_line[sx] & 0x7F];
                 *p++ = e.r; *p++ = e.g; *p++ = e.b;
             }
+            if (vdiag) s_expand_us += esp_timer_get_time();
 
             int dy0 = off_y + sy * 2;
             int dy1 = dy0 + 1;
+            if (vdiag) s_copy_us -= esp_timer_get_time();
             if (dy0 >= 0 && dy0 < DST_H)
                 memcpy(dst + dy0 * DST_STRIDE + dst_x_bytes, row_buf, render_bytes);
             if (dy1 >= 0 && dy1 < DST_H)
                 memcpy(dst + dy1 * DST_STRIDE + dst_x_bytes, row_buf, render_bytes);
+            if (vdiag) s_copy_us += esp_timer_get_time();
         }
     }
 
@@ -291,9 +296,10 @@ void ESP32Video::Update(const FrameBuffer& fb)
 
     if (vdiag) {
         vt2 = esp_timer_get_time();
-        ESP_LOGI(TAG, "video frame %d: render=%lld us  flush=%lld us  total=%lld us",
+        ESP_LOGI(TAG, "video frame %d: expand=%lld us  copy2psram=%lld us  flush=%lld us  total=%lld us",
                  s_vdiag_count,
-                 (long long)(vt1 - vt0),
+                 (long long)s_expand_us,
+                 (long long)s_copy_us,
                  (long long)(vt2 - vt1),
                  (long long)(vt2 - vt0));
         s_vdiag_count++;
