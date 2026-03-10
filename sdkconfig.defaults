@@ -142,25 +142,22 @@ CONFIG_SIM_DISPLAY_DSI_LANES=2
 # 720p RGB888: pixel clock 64MHz × 24bpp = 1536Mbps total / 2 lanes = 768Mbps.
 # 800Mbps gives comfortable headroom.
 CONFIG_SIM_DISPLAY_DSI_LANE_MBPS=1000
-# 1280×720 reduced-blanking timings — validated by Olimex production test.
-# pclk=64MHz from PLL_F240M (240/4=60? No — IDF picks nearest: 240/3=80? Actually
-# MIPI_DSI_DPI_CLK_SRC_DEFAULT lets the IDF pick the best PLL divisor for 64MHz).
-# These timings are NOT CEA-861 standard but work on all tested monitors via LT8912B.
-# SAM active area 512×384 centred: OFF_X=384, OFF_Y=168.
-# Framebuffer: 1280×720×3 = 2.76MB.
+# 1024×768 reduced-blanking timings — validated by Olimex production test.
+# pclk=56MHz, MIPI_DSI_DPI_CLK_SRC_DEFAULT.
+# SAM active area 512×384 centred: OFF_X=256, OFF_Y=192.
+# Framebuffer: 1024×768×3 = 2.36MB.
 # SETTLE=0x10 (from Olimex production test LT8912B driver, reg 0x11).
 # HSYNC_POL=1 (positive), VSYNC_POL=0 (negative) — as in production test.
-# DDS bytes 0x4E/0x4F/0x50: fixed internal reference oscillator values
-# from Olimex production test static DDS table (not pclk-dependent).
-CONFIG_SIM_DISPLAY_HACT=1280
-CONFIG_SIM_DISPLAY_VACT=720
-CONFIG_SIM_DISPLAY_PCLK_MHZ=64
+# DDS bytes 0x4E/0x4F/0x50: fixed internal reference oscillator values.
+CONFIG_SIM_DISPLAY_HACT=1024
+CONFIG_SIM_DISPLAY_VACT=768
+CONFIG_SIM_DISPLAY_PCLK_MHZ=56
 CONFIG_SIM_DISPLAY_HS=32
 CONFIG_SIM_DISPLAY_HFP=48
 CONFIG_SIM_DISPLAY_HBP=80
-CONFIG_SIM_DISPLAY_VS=5
+CONFIG_SIM_DISPLAY_VS=4
 CONFIG_SIM_DISPLAY_VFP=3
-CONFIG_SIM_DISPLAY_VBP=13
+CONFIG_SIM_DISPLAY_VBP=15
 CONFIG_SIM_DISPLAY_HSYNC_POL=1
 CONFIG_SIM_DISPLAY_VSYNC_POL=0
 CONFIG_SIM_DISPLAY_SETTLE=0x10

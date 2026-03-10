@@ -33,8 +33,8 @@ static const char* TAG = "video";
 
 // ── Display geometry ──────────────────────────────────────────────────────────
 // Must match sdkconfig.defaults CONFIG_SIM_DISPLAY_HACT/VACT.
-static constexpr int DST_W      = 1280;
-static constexpr int DST_H      = 720;
+static constexpr int DST_W      = 1024;
+static constexpr int DST_H      = 768;
 static constexpr int DST_STRIDE = DST_W * 3;   // 3840 bytes per row
 
 // SAM active area: 512×192 → 2×V → 512×384, centred in 1280×720
