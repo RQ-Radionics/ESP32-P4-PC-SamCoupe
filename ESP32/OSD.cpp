@@ -24,6 +24,13 @@ bool OSD::Init()
     // is driven by i2s_channel_write blocking at 44100 Hz.
     SetOption(audiosync, true);
 
+    // Force visiblearea=0 (no border, 512×192 framebuffer).
+    // The display is 640×480; the SAM image is scaled 1×H + 2×V → 512×384,
+    // centred with 64px left/right and 48px top/bottom black padding.
+    // Larger visiblearea values produce wider framebuffers that overflow the
+    // 640px display width (e.g. visiblearea=2 → 576px → 1152px scaled).
+    SetOption(visiblearea, 0);
+
     return true;
 }
 
