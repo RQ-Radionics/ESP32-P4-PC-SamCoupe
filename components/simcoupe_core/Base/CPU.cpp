@@ -79,7 +79,9 @@ static void sound_task(void* /*arg*/)
         // Wait for Core 1 to signal that a frame's Z80 execution is complete
         xSemaphoreTake(s_sound_start, portMAX_DELAY);
 
-        if (!s_sound_turbo) {
+        // SOUND_STUB: skip Sound::FrameUpdate() to measure Z80+video ceiling.
+        // Remove this stub once video is optimised.
+        if (false && !s_sound_turbo) {
             Sound::FrameUpdate();
         }
 
