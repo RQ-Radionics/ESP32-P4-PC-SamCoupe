@@ -426,24 +426,13 @@ esp_err_t esp_lcd_lt8912b_post_dpi_enable(void)
     lt_read(m, 0x9D, &hs_h);
     lt_read(m, 0x9E, &vs_l);
     lt_read(m, 0x9F, &vs_h);
+    /* Do NOT re-trigger rxlogicres/dds_rst here — the chip already locked
+     * during init (DSI starts before post_dpi_enable is called). A second
+     * rxlogicres pulse resets the PLL and breaks sync (Vsync drops from
+     * 0x01D8 to 0x003D). Diagnostic read only. */
     ESP_LOGI(TAG, "MIPI sync: Hsync=0x%02X%02X Vsync=0x%02X%02X%s",
              hs_h, hs_l, vs_h, vs_l,
              (hs_l || hs_h || vs_l || vs_h) ? " — DSI locked" : " — NO DSI SIGNAL");
-
-    ESP_RETURN_ON_ERROR(lt_write(m, 0x03, 0x7F), TAG, "post rxres hold");
-    vTaskDelay(pdMS_TO_TICKS(10));
-    ESP_RETURN_ON_ERROR(lt_write(m, 0x03, 0xFF), TAG, "post rxres release");
-    ESP_RETURN_ON_ERROR(lt_write(m, 0x05, 0xFB), TAG, "post dds_rst hold");
-    vTaskDelay(pdMS_TO_TICKS(10));
-    ESP_RETURN_ON_ERROR(lt_write(m, 0x05, 0xFF), TAG, "post dds_rst release");
-    ESP_RETURN_ON_ERROR(lt_write(m, 0x33, 0x0E), TAG, "post hdmi_out_en");
-
-    lt_read(m, 0x9C, &hs_l);
-    lt_read(m, 0x9D, &hs_h);
-    lt_read(m, 0x9E, &vs_l);
-    lt_read(m, 0x9F, &vs_h);
-    ESP_LOGI(TAG, "MIPI sync after re-lock: Hsync=0x%02X%02X Vsync=0x%02X%02X",
-             hs_h, hs_l, vs_h, vs_l);
 
     return ESP_OK;
 }
