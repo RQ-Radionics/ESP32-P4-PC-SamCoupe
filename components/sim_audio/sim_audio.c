@@ -73,11 +73,18 @@ static esp_err_t audio_i2s_init(void)
 
     /* Stereo 16-bit I2S at 44100 Hz.
      * SimCoupe Sound.cpp generates native stereo (L+R interleaved int16_t).
-     * ES8311 expects I2S_SLOT_MODE_STEREO LRCK framing. */
+     * ES8311 expects I2S_SLOT_MODE_STEREO LRCK framing.
+     *
+     * Clock source: I2S_CLK_SRC_DEFAULT (XTAL 40MHz on ESP32-P4 rev<3).
+     * I2S_CLK_SRC_APLL causes the I2S to run at ~27562 Hz instead of 44100 Hz
+     * because the APLL mclk_div=2 calculation in i2s_set_get_apll_freq() produces
+     * an incorrect APLL frequency on this silicon (ratio 5/8 observed).
+     * With I2S_CLK_SRC_DEFAULT the driver uses integer division from XTAL,
+     * which gives a small frequency error (~0.1%) that the ES8311 tolerates. */
     i2s_std_config_t std_cfg = {
         .clk_cfg  = {
             .sample_rate_hz = CONFIG_SIM_AUDIO_SAMPLE_RATE,
-            .clk_src        = I2S_CLK_SRC_APLL,
+            .clk_src        = I2S_CLK_SRC_DEFAULT,
             .mclk_multiple  = MCLK_MULTIPLE,
         },
         .slot_cfg = I2S_STD_PHILIP_SLOT_DEFAULT_CONFIG(
