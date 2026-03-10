@@ -56,6 +56,18 @@ void *sim_display_get_back_buffer(void);
  */
 esp_err_t sim_display_flush(void);
 
+/**
+ * @brief Flush only a region of the back buffer, then swap front/back.
+ *
+ * Like sim_display_flush() but only syncs [byte_offset, byte_offset+byte_size)
+ * of the back buffer.  Use this to avoid syncing unchanged padding rows.
+ *
+ * @param byte_offset  Byte offset from start of back buffer to start syncing.
+ * @param byte_size    Number of bytes to sync.
+ * @return ESP_OK on success, ESP_ERR_INVALID_STATE if not initialized.
+ */
+esp_err_t sim_display_flush_region(size_t byte_offset, size_t byte_size);
+
 #ifdef __cplusplus
 }
 #endif

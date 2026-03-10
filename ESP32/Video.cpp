@@ -20,6 +20,7 @@
 #include "sim_display.h"
 #include "esp_log.h"
 #include "esp_cache.h"
+#include "esp_timer.h"
 #include <algorithm>
 #include <string.h>
 
@@ -171,6 +172,14 @@ void ESP32Video::Update(const FrameBuffer& fb)
     if (!m_initialized)
         return;
 
+    // ── Video timing diagnostic (5 frames after frame 400) ───────────────────
+    static int  s_vdiag_skip  = 400;
+    static int  s_vdiag_count = 0;
+    int64_t vt0 = 0, vt1 = 0, vt2 = 0;
+    bool vdiag = (s_vdiag_skip == 0 && s_vdiag_count < 5);
+    if (s_vdiag_skip > 0) s_vdiag_skip--;
+    if (vdiag) vt0 = esp_timer_get_time();
+
     uint8_t* dst = static_cast<uint8_t*>(sim_display_get_back_buffer());
     if (!dst)
         return;
@@ -282,5 +291,40 @@ void ESP32Video::Update(const FrameBuffer& fb)
             memset(dst + dy * DST_STRIDE, 0, DST_STRIDE);
     }
 
-    sim_display_flush();
+    if (vdiag) vt1 = esp_timer_get_time();
+
+    // Flush only the active area rows to PSRAM — skip the black padding rows
+    // (top off_y rows and bottom DST_H - off_y - scaled_h rows) which never
+    // change after the first frame.  This reduces the msync from 921,600 bytes
+    // (full 640×480×3) to the active region only.
+    //
+    // Active region: rows [off_y .. off_y+scaled_h) for normal fb,
+    //                rows [off_y .. off_y+src_h)    for GUI.
+    // For visiblearea=0: off_y=48, scaled_h=384 → rows 48..431 = 384 rows.
+    // Byte range: [48*640*3 .. (48+384)*640*3) = [92160 .. 829440) = 737,280 bytes.
+    // vs full flush: 921,600 bytes — saves 20% msync bandwidth.
+    //
+    // NOTE: on the very first frame the padding rows are already zeroed and
+    // flushed by sim_display_init(), so skipping them here is safe.
+    {
+        const int active_top    = std::max(off_y, 0);
+        const int active_bottom = std::min(off_y + scaled_h, DST_H);
+        if (active_bottom > active_top) {
+            size_t region_offset = (size_t)active_top * DST_STRIDE;
+            size_t region_size   = (size_t)(active_bottom - active_top) * DST_STRIDE;
+            sim_display_flush_region(region_offset, region_size);
+        } else {
+            sim_display_flush();  // fallback (shouldn't happen)
+        }
+    }
+
+    if (vdiag) {
+        vt2 = esp_timer_get_time();
+        ESP_LOGI(TAG, "video frame %d: render=%lld us  flush=%lld us  total=%lld us",
+                 s_vdiag_count,
+                 (long long)(vt1 - vt0),
+                 (long long)(vt2 - vt1),
+                 (long long)(vt2 - vt0));
+        s_vdiag_count++;
+    }
 }

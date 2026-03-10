@@ -117,10 +117,10 @@ float Audio::AddData(uint8_t* pData_, int len_bytes)
             return 0.5f;
         }
     }
-    int written = sim_audio_write(
-        reinterpret_cast<const int16_t*>(pData_),
-        num_samples,
-        portMAX_DELAY);
+    // AUDIO_STUB: skip actual I2S write to isolate video render timing.
+    // Remove this stub once video is optimised.
+    // int written = sim_audio_write(...);
+    int written = num_samples;
 
     if (written < 0)
         return 0.0f;
