@@ -168,12 +168,6 @@ void ESP32Video::BuildPalette()
 
 void ESP32Video::Update(const FrameBuffer& fb)
 {
-#ifdef VIDEO_STUB
-    // STUB: discard frame without any display write or flush.
-    // Used for pure Z80 speed measurement. Remove VIDEO_STUB to restore.
-    (void)fb;
-    return;
-#endif
     if (!m_initialized)
         return;
 

@@ -32,6 +32,9 @@
 
 #include "SimCoupe.h"
 #include "CPU.h"
+#include "esp_timer.h"
+#include "esp_log.h"
+static const char* TAG_PERF = "z80perf";
 
 #include "BlueAlpha.h"
 #include "Debug.h"
@@ -112,9 +115,25 @@ void ExecuteChunk()
         return;
     }
 
+    // ── Z80 per-frame timing diagnostic (5 frames after frame 60) ───────────
+    // Counts instructions and wall time per frame to compute ns/insn and
+    // ns/z80cycle — tells us how expensive the Z80 decoder is per instruction.
+    static int s_perf_frames = 0;   // frames logged so far
+    static int s_total_frames = 0;  // total frames executed (including reset)
+    static int64_t s_perf_t0 = 0;
+    static uint32_t s_perf_insns = 0;
+    s_total_frames++;
+    // Start logging after frame 400 (~8s after boot, well after USB enumeration)
+    bool perf_active = (s_total_frames > 400) && (s_perf_frames < 5);
+    if (perf_active) {
+        s_perf_t0 = esp_timer_get_time();
+        s_perf_insns = 0;
+    }
+
     for (g_fBreak = false; !g_fBreak; )
     {
         cpu.on_step();
+        if (perf_active) s_perf_insns++;
 
         CheckEvents(CPU::frame_cycles);
 
@@ -144,31 +163,75 @@ void ExecuteChunk()
         }
     }
 
+    if (perf_active) {
+        int64_t dt_us = esp_timer_get_time() - s_perf_t0;
+        // frame_cycles = Z80 cycles executed this frame
+        // insns = instructions executed
+        // ns_per_insn = dt_us*1000 / insns
+        uint32_t cyc = CPU::frame_cycles;
+        uint32_t ns_per_insn = (s_perf_insns > 0) ? (uint32_t)(dt_us * 1000 / s_perf_insns) : 0;
+        uint32_t ns_per_cycle = (cyc > 0) ? (uint32_t)(dt_us * 1000 / cyc) : 0;
+        ESP_LOGI(TAG_PERF,
+                 "frame %d: %lld us, %lu insns, %lu z80cyc, %lu ns/insn, %lu ns/z80cyc",
+                 s_perf_frames, dt_us, (unsigned long)s_perf_insns,
+                 (unsigned long)cyc,
+                 (unsigned long)ns_per_insn, (unsigned long)ns_per_cycle);
+        s_perf_frames++;
+    }
+
     if (boot_frames > 0 && !--boot_frames)
         g_nTurbo &= ~TURBO_BOOT;
 }
 
 void Run()
 {
+    // ── Loop timing diagnostic — logs breakdown for first 5 complete frames ──
+    static int s_run_frames = 0;
+    static int64_t s_t_execute, s_t_frameend, s_t_flyback, s_t_checkevents;
+
     while (UI::CheckEvents())
     {
         if (g_fPaused)
             continue;
 
+        int64_t t0 = esp_timer_get_time();
         if (!Debug::IsActive() && !GUI::IsModal())
             ExecuteChunk();
+        int64_t t1 = esp_timer_get_time();
 
         Frame::End();
+        int64_t t2 = esp_timer_get_time();
 
+        int64_t t2b = 0, t2c = 0, t2d = 0;
         if (CPU::frame_cycles >= CPU_CYCLES_PER_FRAME)
         {
             EventFrameEnd(CPU_CYCLES_PER_FRAME);
-
+            t2b = esp_timer_get_time();
             IO::FrameUpdate();
+            t2c = esp_timer_get_time();
             Debug::FrameEnd();
             Frame::Flyback();
-
+            t2d = esp_timer_get_time();
             CPU::frame_cycles %= CPU_CYCLES_PER_FRAME;
+        }
+        int64_t t3 = esp_timer_get_time();
+
+        if (s_run_frames < 5 && s_run_frames >= 0)
+        {
+            // Log frames 400-404 (~8s after boot, well after USB enumeration at ~5s)
+            static int s_run_skip = 400;
+            if (s_run_skip > 0) { s_run_skip--; }
+            else {
+                ESP_LOGI(TAG_PERF,
+                         "run frame %d: execute=%lld  frame_end=%lld  io_frameupdate=%lld  flyback=%lld  total=%lld  (us)",
+                         s_run_frames,
+                         (long long)(t1 - t0),
+                         (long long)(t2 - t1),
+                         (long long)(t2c - t2b),
+                         (long long)(t2d - t2c),
+                         (long long)(t3 - t0));
+                s_run_frames++;
+            }
         }
     }
 

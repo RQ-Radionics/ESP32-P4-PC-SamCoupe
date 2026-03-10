@@ -93,12 +93,6 @@ void Audio::Exit()
 // Returns a fill ratio [0.0, 1.0] — we approximate from the write result.
 float Audio::AddData(uint8_t* pData_, int len_bytes)
 {
-#ifdef AUDIO_STUB
-    // STUB: discard audio immediately — no I2S write, no blocking.
-    // Used for pure Z80+video speed measurement. Remove AUDIO_STUB to restore.
-    (void)pData_; (void)len_bytes;
-    return 0.5f;
-#else
     if (!s_initialized || !pData_ || len_bytes <= 0)
         return 0.0f;
 
@@ -134,5 +128,4 @@ float Audio::AddData(uint8_t* pData_, int len_bytes)
     // Return 0.5 (half full) so Sound.cpp's speed-adjust scale stays at 1.0
     // and does NOT call sleep_until — timing is already handled by I2S above.
     return 0.5f;
-#endif
 }
