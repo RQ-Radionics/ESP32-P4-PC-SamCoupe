@@ -53,11 +53,11 @@ menu "SimCoupe Display (LT8912B HDMI Bridge)"
 
     config SIM_DISPLAY_DSI_LANE_MBPS
         int "DSI lane bit rate (Mbps)"
-        default 896
+        default 800
         help
             MIPI DSI bit rate per lane in Mbps.
             Must satisfy: lane_mbps >= pclk_mhz * 24 / num_lanes (with margin).
-            1024x768@60Hz/60MHz/2lanes: 60*24/2=720 Mbps → use 896 Mbps.
+            1280x720@64MHz/2lanes: 64*24/2=768 Mbps → use 800 Mbps.
 
     # ---------------------------------------------------------------
     # Video timing — single source of truth for all timing parameters.
@@ -65,45 +65,45 @@ menu "SimCoupe Display (LT8912B HDMI Bridge)"
 
     config SIM_DISPLAY_HACT
         int "Horizontal active pixels"
-        default 1024
+        default 1280
         help
-            Horizontal active pixel count (e.g. 1024 for 1024x768).
+            Horizontal active pixel count (e.g. 1280 for 1280x720).
 
     config SIM_DISPLAY_VACT
         int "Vertical active lines"
-        default 768
+        default 720
         help
-            Vertical active line count (e.g. 768 for 1024x768).
+            Vertical active line count (e.g. 720 for 1280x720).
 
     config SIM_DISPLAY_PCLK_MHZ
-        int "Pixel clock (MHz, integer — for logging)"
-        default 74
+        int "Pixel clock (MHz)"
+        default 64
         help
-            Pixel clock in MHz (integer part). Used for log messages only.
-            The actual APLL frequency is hardcoded to 74.25 MHz in sim_display.c
-            for CEA-861 720p@60Hz.
+            Pixel clock in MHz. Passed to esp_lcd_new_panel_dpi() as
+            dpi_clock_freq_mhz. For 1280x720 reduced-blanking (Olimex
+            production test timings), use 64 MHz with MIPI_DSI_DPI_CLK_SRC_DEFAULT.
 
     config SIM_DISPLAY_HS
         int "Horizontal sync width (pixels)"
-        default 83
+        default 32
         help
             Horizontal sync pulse width in pixels.
 
     config SIM_DISPLAY_HFP
         int "Horizontal front porch (pixels)"
-        default 14
+        default 48
         help
             Horizontal front porch in pixels.
 
     config SIM_DISPLAY_HBP
         int "Horizontal back porch (pixels)"
-        default 120
+        default 80
         help
             Horizontal back porch in pixels.
 
     config SIM_DISPLAY_VS
         int "Vertical sync width (lines)"
-        default 6
+        default 5
         help
             Vertical sync pulse width in lines.
 
@@ -115,7 +115,7 @@ menu "SimCoupe Display (LT8912B HDMI Bridge)"
 
     config SIM_DISPLAY_VBP
         int "Vertical back porch (lines)"
-        default 29
+        default 13
         help
             Vertical back porch in lines.
 
@@ -131,11 +131,10 @@ menu "SimCoupe Display (LT8912B HDMI Bridge)"
 
     config SIM_DISPLAY_SETTLE
         hex "MIPI DSI settle register (0x49:0x11)"
-        default 0x08
+        default 0x10
         help
             MIPI DSI settle time register value.
-            Upstream Linux kernel uses: 0x04 for vactive<=600, 0x08 for
-            vactive>600 (including 768), 0x0a for vactive==1080.
+            Olimex production test uses 0x10 for 1280x720.
 
     config SIM_DISPLAY_DDS_0
         hex "DDS frequency word byte 0 (LSB, reg 0x4E)"

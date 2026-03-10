@@ -24,7 +24,6 @@
 #include "esp_lcd_panel_ops.h"
 #include "esp_lcd_mipi_dsi.h"
 #include "esp_lcd_lt8912b.h"
-#include "clk_ctrl_os.h"
 #include <string.h>
 
 static const char *TAG = "sim_display";
@@ -158,34 +157,14 @@ esp_err_t sim_display_init(void)
     ESP_LOGI(TAG, "step 3 OK");
 
     /* Step 4: Create DPI panel — feeds pixel data from ESP32-P4 to LT8912B DSI input.
-     * Clock source = APLL, configured to 74.25 MHz for CEA-861 720p@60Hz.
-     * APLL is the only source that can generate 74.25 MHz exactly from the
-     * 40 MHz XTAL — PLL_F240M cannot divide to 74.25 MHz without error.
+     * Clock source = DEFAULT (PLL_F240M), 64 MHz for reduced-blanking 720p@60Hz.
+     * These timings are validated by the Olimex production test and work on all
+     * tested monitors via the LT8912B bridge.
      * num_fbs=2: double-buffered so SimCoupe renders to back buffer
      *            while DPI DMA reads the front buffer.
      * disable_lp=1: stay in HS mode during blanking (required for video mode). */
-    ESP_LOGI(TAG, "step 4a — APLL init @ %d MHz", CONFIG_SIM_DISPLAY_PCLK_MHZ);
-    {
-        periph_rtc_apll_acquire();
-        uint32_t real_freq_hz = 0;
-        /* 74.25 MHz = 74250 kHz — CEA-861 720p@60Hz exact pixel clock.
-         * CONFIG_SIM_DISPLAY_PCLK_MHZ is an integer (74) and loses the .25 MHz
-         * fraction, so we pass the exact value in Hz directly. */
-        esp_err_t apll_ret = periph_rtc_apll_freq_set(74250000, &real_freq_hz);
-        if (apll_ret != ESP_OK) {
-            ESP_LOGE(TAG, "APLL freq set failed (0x%x)", apll_ret);
-            esp_lcd_lt8912b_deinit();
-            i2c_del_master_bus(s_i2c_bus);
-            s_i2c_bus = NULL;
-            esp_lcd_del_dsi_bus(dsi_bus);
-            return ESP_FAIL;
-        }
-        ESP_LOGI(TAG, "APLL: requested %d MHz, actual %.3f MHz",
-                 CONFIG_SIM_DISPLAY_PCLK_MHZ, real_freq_hz / 1e6f);
-    }
-
     esp_lcd_dpi_panel_config_t dpi_cfg = {
-        .dpi_clk_src         = MIPI_DSI_DPI_CLK_SRC_APLL,
+        .dpi_clk_src         = MIPI_DSI_DPI_CLK_SRC_DEFAULT,
         .dpi_clock_freq_mhz  = CONFIG_SIM_DISPLAY_PCLK_MHZ,
         .pixel_format        = LCD_COLOR_PIXEL_FORMAT_RGB888,
         .num_fbs             = 2,
@@ -201,7 +180,7 @@ esp_err_t sim_display_init(void)
         },
         .flags.disable_lp    = 1,
     };
-    ESP_LOGI(TAG, "step 4 — DPI panel create");
+    ESP_LOGI(TAG, "step 4 — DPI panel create @ %d MHz (PLL_DEFAULT)", CONFIG_SIM_DISPLAY_PCLK_MHZ);
     if (esp_lcd_new_panel_dpi(dsi_bus, &dpi_cfg, &s_panel) != ESP_OK) {
         ESP_LOGE(TAG, "DPI panel init failed");
         esp_lcd_lt8912b_deinit();
