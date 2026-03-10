@@ -1,0 +1,5274 @@
+
+#   Z80 CPU Emulator.
+#   https://github.com/kosarev/z80
+#
+#   Copyright (c) 2017 Ivan Kosarev <mail@ivankosarev.com>
+#   Published under the MIT license.
+
+
+# ADD r
+87 add a, a
+ 0 m1_fetch
+ 0   fetch 87 at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 get_a 00
+ 4 get_a 00
+ 4 set_a 00 -> 00
+ 4 set_f 00 -> 40
+ 4 done
+
+# ADD A, n
+c616 add a, 0x16
+ 0 m1_fetch
+ 0   fetch c6 at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 imm8_read 16 at 0001
+ 4   get_pc_on_imm8_read 0001
+ 4   read 16 at 0001
+ 4     set_addr_bus 0000 -> 0001
+ 6     mreq_wait 0001
+ 7   set_pc_on_imm8_read 0001 -> 0002
+ 7 get_a 00
+ 7 set_a 00 -> 16
+ 7 set_f 00 -> 00
+ 7 done
+
+# ADD HL, rp
+19 add hl, de
+ 0 m1_fetch
+ 0   fetch 19 at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 get_l 00
+ 4 get_h 00
+ 4 get_e 00
+ 4 get_d 00
+ 4 get_f 00
+ 4 4t_exec
+ 8 3t_exec
+11 set_wz 0000 -> 0001
+11 set_l 00 -> 00
+11 set_h 00 -> 00
+11 set_f 00 -> 00
+11 done
+
+# ADC A, r
+89 adc a, c
+ 0 m1_fetch
+ 0   fetch 89 at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 get_c 00
+ 4 get_a 00
+ 4 get_f 00
+ 4 set_a 00 -> 00
+ 4 set_f 00 -> 40
+ 4 done
+
+# ADC HL, rp
+ed5a adc hl, de
+ 0 m1_fetch
+ 0   fetch ed at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 m1_fetch
+ 4   fetch 5a at 0001
+ 4     get_pc_on_fetch 0001
+ 4     set_addr_bus 0000 -> 0001
+ 6     mreq_wait 0001
+ 6     get_ir_on_refresh 0001
+ 6     set_addr_bus 0001 -> 0001
+ 8     set_pc_on_fetch 0001 -> 0002
+ 8   set_r 01 -> 02
+ 8 get_l 00
+ 8 get_h 00
+ 8 get_e 00
+ 8 get_d 00
+ 8 get_f 00
+ 8 4t_exec
+12 3t_exec
+15 set_wz 0000 -> 0001
+15 set_l 00 -> 00
+15 set_h 00 -> 00
+15 set_f 00 -> 40
+15 done
+
+# 'ADC HL, rp' is never affected by DD/FD prefixes.
+dded6a (db 0xdd), adc hl, hl
+ 0 m1_fetch
+ 0   fetch dd at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 set_index_rp hl -> ix
+ 4 disable_int
+ 4 m1_fetch
+ 4   fetch ed at 0001
+ 4     get_pc_on_fetch 0001
+ 4     set_addr_bus 0000 -> 0001
+ 6     mreq_wait 0001
+ 6     get_ir_on_refresh 0001
+ 6     set_addr_bus 0001 -> 0001
+ 8     set_pc_on_fetch 0001 -> 0002
+ 8   set_r 01 -> 02
+ 8 m1_fetch
+ 8   fetch 6a at 0002
+ 8     get_pc_on_fetch 0002
+ 8     set_addr_bus 0001 -> 0002
+10     mreq_wait 0002
+10     get_ir_on_refresh 0002
+10     set_addr_bus 0002 -> 0002
+12     set_pc_on_fetch 0002 -> 0003
+12   set_r 02 -> 03
+12 get_l 00
+12 get_h 00
+12 get_l 00
+12 get_h 00
+12 get_f 00
+12 4t_exec
+16 3t_exec
+19 set_wz 0000 -> 0001
+19 set_l 00 -> 00
+19 set_h 00 -> 00
+19 set_f 00 -> 40
+19 set_index_rp ix -> hl
+19 done
+
+# AND r
+a7 and a
+ 0 m1_fetch
+ 0   fetch a7 at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 get_a 00
+ 4 get_a 00
+ 4 set_a 00 -> 00
+ 4 set_f 00 -> 54
+ 4 done
+
+# BIT b, r
+fdcb014e bit 1, (iy + 1)
+ 0 m1_fetch
+ 0   fetch fd at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 set_index_rp hl -> iy
+ 4 disable_int
+ 4 m1_fetch
+ 4   fetch cb at 0001
+ 4     get_pc_on_fetch 0001
+ 4     set_addr_bus 0000 -> 0001
+ 6     mreq_wait 0001
+ 6     get_ir_on_refresh 0001
+ 6     set_addr_bus 0001 -> 0001
+ 8     set_pc_on_fetch 0001 -> 0002
+ 8   set_r 01 -> 02
+ 8 disp_read 01 at 0002
+ 8   get_pc_on_disp_read 0002
+ 8   read 01 at 0002
+ 8     set_addr_bus 0001 -> 0002
+10     mreq_wait 0002
+11   set_pc_on_disp_read 0002 -> 0003
+11 fetch 4e at 0003
+11   get_pc_on_fetch 0003
+11   set_addr_bus 0002 -> 0003
+13   mreq_wait 0003
+13   get_ir_on_refresh 0002
+13   set_addr_bus 0003 -> 0002
+15   set_pc_on_fetch 0003 -> 0004
+15 fetch_cycle_extra_1t
+16 get_iyl 00
+16 get_iyh 00
+16 read cb at 0001
+16   set_addr_bus 0002 -> 0001
+18   mreq_wait 0001
+19 read_cycle_extra_1t
+20 set_wz 0000 -> 0001
+20 get_f 00
+20 set_f 00 -> 10
+20 set_index_rp iy -> hl
+20 done
+
+# Undocumented BIT
+ddcb0440 bit b, 0, (ix + 4)
+ 0 m1_fetch
+ 0   fetch dd at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 set_index_rp hl -> ix
+ 4 disable_int
+ 4 m1_fetch
+ 4   fetch cb at 0001
+ 4     get_pc_on_fetch 0001
+ 4     set_addr_bus 0000 -> 0001
+ 6     mreq_wait 0001
+ 6     get_ir_on_refresh 0001
+ 6     set_addr_bus 0001 -> 0001
+ 8     set_pc_on_fetch 0001 -> 0002
+ 8   set_r 01 -> 02
+ 8 disp_read 04 at 0002
+ 8   get_pc_on_disp_read 0002
+ 8   read 04 at 0002
+ 8     set_addr_bus 0001 -> 0002
+10     mreq_wait 0002
+11   set_pc_on_disp_read 0002 -> 0003
+11 fetch 40 at 0003
+11   get_pc_on_fetch 0003
+11   set_addr_bus 0002 -> 0003
+13   mreq_wait 0003
+13   get_ir_on_refresh 0002
+13   set_addr_bus 0003 -> 0002
+15   set_pc_on_fetch 0003 -> 0004
+15 fetch_cycle_extra_1t
+16 get_ixl 00
+16 get_ixh 00
+16 read 00 at 0004
+16   set_addr_bus 0002 -> 0004
+18   mreq_wait 0004
+19 read_cycle_extra_1t
+20 set_wz 0000 -> 0004
+20 get_f 00
+20 set_f 00 -> 54
+20 set_index_rp ix -> hl
+20 done
+
+# CALL nn
+cddf0e call 0x0edf
+ 0 m1_fetch
+ 0   fetch cd at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 imm16_read 0edf at 0001
+ 4   get_pc_on_imm16_read 0001
+ 4   read df at 0001
+ 4     set_addr_bus 0000 -> 0001
+ 6     mreq_wait 0001
+ 7   read 0e at 0002
+ 7     set_addr_bus 0001 -> 0002
+ 9     mreq_wait 0002
+10   set_pc_on_imm16_read 0001 -> 0003
+10 read_cycle_extra_1t
+11 get_sp 0000
+11 write 00 -> 00 at ffff
+11   set_addr_bus 0002 -> ffff
+13   mreq_wait ffff
+14 write 00 -> 03 at fffe
+14   set_addr_bus ffff -> fffe
+16   mreq_wait fffe
+17 set_sp 0000 -> fffe
+17 set_wz 0000 -> 0edf
+17 set_pc_on_call 0003 -> 0edf
+17 done
+
+# CALL cc, nn
+c4550c call nz, 0x0c55
+ 0 m1_fetch
+ 0   fetch c4 at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 imm16_read 0c55 at 0001
+ 4   get_pc_on_imm16_read 0001
+ 4   read 55 at 0001
+ 4     set_addr_bus 0000 -> 0001
+ 6     mreq_wait 0001
+ 7   read 0c at 0002
+ 7     set_addr_bus 0001 -> 0002
+ 9     mreq_wait 0002
+10   set_pc_on_imm16_read 0001 -> 0003
+10 get_f 00
+10 read_cycle_extra_1t
+11 get_sp 0000
+11 write 00 -> 00 at ffff
+11   set_addr_bus 0002 -> ffff
+13   mreq_wait ffff
+14 write 00 -> 03 at fffe
+14   set_addr_bus ffff -> fffe
+16   mreq_wait fffe
+17 set_sp 0000 -> fffe
+17 set_wz 0000 -> 0c55
+17 set_pc_on_call 0003 -> 0c55
+17 done
+
+# CCF
+3f ccf
+ 0 m1_fetch
+ 0   fetch 3f at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 get_a 00
+ 4 get_f 00
+ 4 set_f 00 -> 01
+ 4 done
+
+# CP r
+bc cp h
+ 0 m1_fetch
+ 0   fetch bc at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 get_h 00
+ 4 get_a 00
+ 4 set_f 00 -> 42
+ 4 done
+
+# CPIR
+edb1 cpir
+ 0 m1_fetch
+ 0   fetch ed at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 m1_fetch
+ 4   fetch b1 at 0001
+ 4     get_pc_on_fetch 0001
+ 4     set_addr_bus 0000 -> 0001
+ 6     mreq_wait 0001
+ 6     get_ir_on_refresh 0001
+ 6     set_addr_bus 0001 -> 0001
+ 8     set_pc_on_fetch 0001 -> 0002
+ 8   set_r 01 -> 02
+ 8 get_c 00
+ 8 get_b 00
+ 8 get_l 00
+ 8 get_h 00
+ 8 get_a 00
+ 8 get_f 00
+ 8 read ed at 0000
+ 8   set_addr_bus 0001 -> 0000
+10   mreq_wait 0000
+11 5t_exec
+16 set_c 00 -> ff
+16 set_b 00 -> ff
+16 set_wz 0000 -> 0001
+16 set_l 00 -> 01
+16 set_h 00 -> 00
+16 set_f 00 -> 36
+16 5t_exec
+21 get_pc_on_block_instr 0002
+21 set_wz 0001 -> 0001
+21 set_pc_on_block_instr 0002 -> 0000
+21 done
+
+# CPL
+2f cpl
+ 0 m1_fetch
+ 0   fetch 2f at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 get_a 00
+ 4 get_f 00
+ 4 set_a 00 -> ff
+ 4 set_f 00 -> 3a
+ 4 done
+
+# DAA
+27 daa
+ 0 m1_fetch
+ 0   fetch 27 at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 get_a 00
+ 4 get_f 00
+ 4 set_a 00 -> 00
+ 4 set_f 00 -> 44
+ 4 done
+
+# DEC r
+35 dec (hl)
+ 0 m1_fetch
+ 0   fetch 35 at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 get_l 00
+ 4 get_h 00
+ 4 read 35 at 0000
+ 4   set_addr_bus 0000 -> 0000
+ 6   mreq_wait 0000
+ 7 read_cycle_extra_1t
+ 8 get_f 00
+ 8 get_l 00
+ 8 get_h 00
+ 8 write 35 -> 34 at 0000
+ 8   set_addr_bus 0000 -> 0000
+10   mreq_wait 0000
+11 set_f 00 -> 22
+11 done
+
+# DEC rp
+2b dec hl
+ 0 m1_fetch
+ 0   fetch 2b at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 fetch_cycle_extra_2t
+ 6 get_l 00
+ 6 get_h 00
+ 6 set_l 00 -> ff
+ 6 set_h 00 -> ff
+ 6 done
+
+# DI
+f3 di
+ 0 m1_fetch
+ 0   fetch f3 at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 set_iff1_on_di 0 -> 0
+ 4   on_set_iff1 0 -> 0
+ 4 set_iff2_on_di 0 -> 0
+ 4   on_set_iff2 0 -> 0
+ 4 done
+
+# DJNZ d
+10fc djnz $ - 2
+ 0 m1_fetch
+ 0   fetch 10 at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 fetch_cycle_extra_1t
+ 5 disp_read fc at 0001
+ 5   get_pc_on_disp_read 0001
+ 5   read fc at 0001
+ 5     set_addr_bus 0000 -> 0001
+ 7     mreq_wait 0001
+ 8   set_pc_on_disp_read 0001 -> 0002
+ 8 get_b 00
+ 8 set_b 00 -> ff
+ 8 5t_exec
+13 get_pc_on_jump 0002
+13 set_wz 0000 -> fffe
+13 set_pc_on_jump 0002 -> fffe
+13 done
+
+# EI
+fb ei
+ 0 m1_fetch
+ 0   fetch fb at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 set_iff1_on_ei 0 -> 1
+ 4   on_set_iff1 0 -> 1
+ 4 set_iff2_on_ei 0 -> 1
+ 4   on_set_iff2 0 -> 1
+ 4 disable_int
+ 4 done
+
+# EX AF, AF'
+08 ex af, af'
+ 0 m1_fetch
+ 0   fetch 08 at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 done
+
+# EX DE, HL
+eb ex de, hl
+ 0 m1_fetch
+ 0   fetch eb at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 done
+
+# EX (SP), irp
+e3 ex (sp), hl
+ 0 m1_fetch
+ 0   fetch e3 at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 get_sp 0000
+ 4 read e3 at 0000
+ 4   set_addr_bus 0000 -> 0000
+ 6   mreq_wait 0000
+ 7 read 00 at 0001
+ 7   set_addr_bus 0000 -> 0001
+ 9   mreq_wait 0001
+10 read_cycle_extra_1t
+11 get_l 00
+11 get_h 00
+11 write 00 -> 00 at 0001
+11   set_addr_bus 0001 -> 0001
+13   mreq_wait 0001
+14 write e3 -> 00 at 0000
+14   set_addr_bus 0001 -> 0000
+16   mreq_wait 0000
+17 write_cycle_extra_2t
+19 set_wz 0000 -> 00e3
+19 set_l 00 -> e3
+19 set_h 00 -> 00
+19 done
+
+# EXX
+d9 exx
+ 0 m1_fetch
+ 0   fetch d9 at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 done
+
+# HALT
+76 halt
+ 0 m1_fetch
+ 0   fetch 76 at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 done
+
+# IM n
+ed56 im 1
+ 0 m1_fetch
+ 0   fetch ed at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 m1_fetch
+ 4   fetch 56 at 0001
+ 4     get_pc_on_fetch 0001
+ 4     set_addr_bus 0000 -> 0001
+ 6     mreq_wait 0001
+ 6     get_ir_on_refresh 0001
+ 6     set_addr_bus 0001 -> 0001
+ 8     set_pc_on_fetch 0001 -> 0002
+ 8   set_r 01 -> 02
+ 8 set_int_mode 0 -> 1
+ 8 done
+
+ed46 im 0
+ed5e im 2
+ed4e xim 0xed4e, 0
+ed66 xim 0xed66, 0
+ed6e xim 0xed6e, 0
+ed76 xim 0xed76, 1
+ed7e xim 0xed7e, 2
+
+# INC r
+04 inc b
+ 0 m1_fetch
+ 0   fetch 04 at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 get_b 00
+ 4 get_f 00
+ 4 set_b 00 -> 01
+ 4 set_f 00 -> 00
+ 4 done
+
+# INC rp
+23 inc hl
+ 0 m1_fetch
+ 0   fetch 23 at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 fetch_cycle_extra_2t
+ 6 get_l 00
+ 6 get_h 00
+ 6 set_l 00 -> 01
+ 6 set_h 00 -> 00
+ 6 done
+
+# IN A, (n)
+dbfe in a, (0xfe)
+ 0 m1_fetch
+ 0   fetch db at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 imm8_read fe at 0001
+ 4   get_pc_on_imm8_read 0001
+ 4   read fe at 0001
+ 4     set_addr_bus 0000 -> 0001
+ 6     mreq_wait 0001
+ 7   set_pc_on_imm8_read 0001 -> 0002
+ 7 get_a 00
+ 7 set_wz 0000 -> 00ff
+ 7 input at 00fe
+ 7   set_addr_bus 0001 -> 00fe
+10   iorq_wait 00fe
+11 set_a 00 -> ff
+11 done
+
+# IN r, (C)
+ed78 in a, (c)
+ 0 m1_fetch
+ 0   fetch ed at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 m1_fetch
+ 4   fetch 78 at 0001
+ 4     get_pc_on_fetch 0001
+ 4     set_addr_bus 0000 -> 0001
+ 6     mreq_wait 0001
+ 6     get_ir_on_refresh 0001
+ 6     set_addr_bus 0001 -> 0001
+ 8     set_pc_on_fetch 0001 -> 0002
+ 8   set_r 01 -> 02
+ 8 get_c 00
+ 8 get_b 00
+ 8 get_f 00
+ 8 set_wz 0000 -> 0001
+ 8 input at 0000
+ 8   set_addr_bus 0001 -> 0000
+11   iorq_wait 0000
+12 set_a 00 -> ff
+12 set_f 00 -> ac
+12 done
+
+# 'IN r, (C)' is never affected by DD/FD prefixes.
+dded60 (db 0xdd), in h, (c)
+ 0 m1_fetch
+ 0   fetch dd at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 set_index_rp hl -> ix
+ 4 disable_int
+ 4 m1_fetch
+ 4   fetch ed at 0001
+ 4     get_pc_on_fetch 0001
+ 4     set_addr_bus 0000 -> 0001
+ 6     mreq_wait 0001
+ 6     get_ir_on_refresh 0001
+ 6     set_addr_bus 0001 -> 0001
+ 8     set_pc_on_fetch 0001 -> 0002
+ 8   set_r 01 -> 02
+ 8 m1_fetch
+ 8   fetch 60 at 0002
+ 8     get_pc_on_fetch 0002
+ 8     set_addr_bus 0001 -> 0002
+10     mreq_wait 0002
+10     get_ir_on_refresh 0002
+10     set_addr_bus 0002 -> 0002
+12     set_pc_on_fetch 0002 -> 0003
+12   set_r 02 -> 03
+12 get_c 00
+12 get_b 00
+12 get_f 00
+12 set_wz 0000 -> 0001
+12 input at 0000
+12   set_addr_bus 0002 -> 0000
+15   iorq_wait 0000
+16 set_h 00 -> ff
+16 set_f 00 -> ac
+16 set_index_rp ix -> hl
+16 done
+
+# JP cc, nn
+d2d90a jp nc, 0x0ad9
+ 0 m1_fetch
+ 0   fetch d2 at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 imm16_read 0ad9 at 0001
+ 4   get_pc_on_imm16_read 0001
+ 4   read d9 at 0001
+ 4     set_addr_bus 0000 -> 0001
+ 6     mreq_wait 0001
+ 7   read 0a at 0002
+ 7     set_addr_bus 0001 -> 0002
+ 9     mreq_wait 0002
+10   set_pc_on_imm16_read 0001 -> 0003
+10 get_f 00
+10 set_wz 0000 -> 0ad9
+10 set_pc_on_jump 0003 -> 0ad9
+10 done
+
+# JP irp
+e9 jp (hl)
+ 0 m1_fetch
+ 0   fetch e9 at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 get_l 00
+ 4 get_h 00
+ 4 set_pc_on_jump 0001 -> 0000
+ 4 done
+
+# JP nn
+c3cdab jp 0xabcd
+ 0 m1_fetch
+ 0   fetch c3 at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 imm16_read abcd at 0001
+ 4   get_pc_on_imm16_read 0001
+ 4   read cd at 0001
+ 4     set_addr_bus 0000 -> 0001
+ 6     mreq_wait 0001
+ 7   read ab at 0002
+ 7     set_addr_bus 0001 -> 0002
+ 9     mreq_wait 0002
+10   set_pc_on_imm16_read 0001 -> 0003
+10 set_wz 0000 -> abcd
+10 set_pc_on_jump 0003 -> abcd
+10 done
+
+# JR d
+1804 jr $ + 6
+ 0 m1_fetch
+ 0   fetch 18 at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 disp_read 04 at 0001
+ 4   get_pc_on_disp_read 0001
+ 4   read 04 at 0001
+ 4     set_addr_bus 0000 -> 0001
+ 6     mreq_wait 0001
+ 7   set_pc_on_disp_read 0001 -> 0002
+ 7 5t_exec
+12 get_pc_on_jump 0002
+12 set_wz 0000 -> 0006
+12 set_pc_on_jump 0002 -> 0006
+12 done
+
+# JR cc, d
+28fa jr z, $ - 4
+ 0 m1_fetch
+ 0   fetch 28 at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 disp_read fa at 0001
+ 4   get_pc_on_disp_read 0001
+ 4   read fa at 0001
+ 4     set_addr_bus 0000 -> 0001
+ 6     mreq_wait 0001
+ 7   set_pc_on_disp_read 0001 -> 0002
+ 7 get_f 00
+ 7 done
+
+200a jr nz, $ + 12
+ 0 m1_fetch
+ 0   fetch 20 at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 disp_read 0a at 0001
+ 4   get_pc_on_disp_read 0001
+ 4   read 0a at 0001
+ 4     set_addr_bus 0000 -> 0001
+ 6     mreq_wait 0001
+ 7   set_pc_on_disp_read 0001 -> 0002
+ 7 get_f 00
+ 7 5t_exec
+12 get_pc_on_jump 0002
+12 set_wz 0000 -> 000c
+12 set_pc_on_jump 0002 -> 000c
+12 done
+
+# LD A, I
+ed57 ld a, i
+ 0 m1_fetch
+ 0   fetch ed at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 m1_fetch
+ 4   fetch 57 at 0001
+ 4     get_pc_on_fetch 0001
+ 4     set_addr_bus 0000 -> 0001
+ 6     mreq_wait 0001
+ 6     get_ir_on_refresh 0001
+ 6     set_addr_bus 0001 -> 0001
+ 8     set_pc_on_fetch 0001 -> 0002
+ 8   set_r 01 -> 02
+ 8 fetch_cycle_extra_1t
+ 9 get_f 00
+ 9 set_a 00 -> 00
+ 9 set_f 00 -> 40
+ 9 done
+
+# LD A, R
+ed5f ld a, r
+ 0 m1_fetch
+ 0   fetch ed at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 m1_fetch
+ 4   fetch 5f at 0001
+ 4     get_pc_on_fetch 0001
+ 4     set_addr_bus 0000 -> 0001
+ 6     mreq_wait 0001
+ 6     get_ir_on_refresh 0001
+ 6     set_addr_bus 0001 -> 0001
+ 8     set_pc_on_fetch 0001 -> 0002
+ 8   set_r 01 -> 02
+ 8 fetch_cycle_extra_1t
+ 9 get_f 00
+ 9 set_a 00 -> 02
+ 9 set_f 00 -> 00
+ 9 done
+
+# LD r, a
+ed4f ld r, a
+ 0 m1_fetch
+ 0   fetch ed at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 m1_fetch
+ 4   fetch 4f at 0001
+ 4     get_pc_on_fetch 0001
+ 4     set_addr_bus 0000 -> 0001
+ 6     mreq_wait 0001
+ 6     get_ir_on_refresh 0001
+ 6     set_addr_bus 0001 -> 0001
+ 8     set_pc_on_fetch 0001 -> 0002
+ 8   set_r 01 -> 02
+ 8 fetch_cycle_extra_1t
+ 9 get_a 00
+ 9 set_r 02 -> 00
+ 9 done
+
+# LD r, r
+47 ld b, a
+ 0 m1_fetch
+ 0   fetch 47 at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 get_a 00
+ 4 set_b 00 -> 00
+ 4 done
+
+dd6b ld ixl, e
+ 0 m1_fetch
+ 0   fetch dd at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 set_index_rp hl -> ix
+ 4 disable_int
+ 4 m1_fetch
+ 4   fetch 6b at 0001
+ 4     get_pc_on_fetch 0001
+ 4     set_addr_bus 0000 -> 0001
+ 6     mreq_wait 0001
+ 6     get_ir_on_refresh 0001
+ 6     set_addr_bus 0001 -> 0001
+ 8     set_pc_on_fetch 0001 -> 0002
+ 8   set_r 01 -> 02
+ 8 get_e 00
+ 8 set_ixl 00 -> 00
+ 8 set_index_rp ix -> hl
+ 8 done
+
+# 0x6e LD L,(REGISTER+dd)
+fd6e12 ld l, (iy + 18)
+ 0 m1_fetch
+ 0   fetch fd at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 set_index_rp hl -> iy
+ 4 disable_int
+ 4 m1_fetch
+ 4   fetch 6e at 0001
+ 4     get_pc_on_fetch 0001
+ 4     set_addr_bus 0000 -> 0001
+ 6     mreq_wait 0001
+ 6     get_ir_on_refresh 0001
+ 6     set_addr_bus 0001 -> 0001
+ 8     set_pc_on_fetch 0001 -> 0002
+ 8   set_r 01 -> 02
+ 8 disp_read 12 at 0002
+ 8   get_pc_on_disp_read 0002
+ 8   read 12 at 0002
+ 8     set_addr_bus 0001 -> 0002
+10     mreq_wait 0002
+11   set_pc_on_disp_read 0002 -> 0003
+11 5t_exec
+16 get_iyl 00
+16 get_iyh 00
+16 read 00 at 0012
+16   set_addr_bus 0002 -> 0012
+18   mreq_wait 0012
+19 set_wz 0000 -> 0012
+19 set_l 00 -> 00
+19 set_index_rp iy -> hl
+19 done
+
+# LD r, n
+3eaf ld a, 0xaf
+ 0 m1_fetch
+ 0   fetch 3e at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 imm8_read af at 0001
+ 4   get_pc_on_imm8_read 0001
+ 4   read af at 0001
+ 4     set_addr_bus 0000 -> 0001
+ 6     mreq_wait 0001
+ 7   set_pc_on_imm8_read 0001 -> 0002
+ 7 set_a 00 -> af
+ 7 done
+
+3602 ld (hl), 0x02
+ 0 m1_fetch
+ 0   fetch 36 at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 imm8_read 02 at 0001
+ 4   get_pc_on_imm8_read 0001
+ 4   read 02 at 0001
+ 4     set_addr_bus 0000 -> 0001
+ 6     mreq_wait 0001
+ 7   set_pc_on_imm8_read 0001 -> 0002
+ 7 get_l 00
+ 7 get_h 00
+ 7 write 36 -> 02 at 0000
+ 7   set_addr_bus 0001 -> 0000
+ 9   mreq_wait 0000
+10 done
+
+# LD I, A
+ed47 ld i, a
+ 0 m1_fetch
+ 0   fetch ed at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 m1_fetch
+ 4   fetch 47 at 0001
+ 4     get_pc_on_fetch 0001
+ 4     set_addr_bus 0000 -> 0001
+ 6     mreq_wait 0001
+ 6     get_ir_on_refresh 0001
+ 6     set_addr_bus 0001 -> 0001
+ 8     set_pc_on_fetch 0001 -> 0002
+ 8   set_r 01 -> 02
+ 8 fetch_cycle_extra_1t
+ 9 get_a 00
+ 9 set_i 00 -> 00
+ 9 done
+
+# LD rp, nn
+115634 ld de, 0x3456
+ 0 m1_fetch
+ 0   fetch 11 at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 imm16_read 3456 at 0001
+ 4   get_pc_on_imm16_read 0001
+ 4   read 56 at 0001
+ 4     set_addr_bus 0000 -> 0001
+ 6     mreq_wait 0001
+ 7   read 34 at 0002
+ 7     set_addr_bus 0001 -> 0002
+ 9     mreq_wait 0002
+10   set_pc_on_imm16_read 0001 -> 0003
+10 set_e 00 -> 56
+10 set_d 00 -> 34
+10 done
+
+fd213a5c ld iy, 0x5c3a
+ 0 m1_fetch
+ 0   fetch fd at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 set_index_rp hl -> iy
+ 4 disable_int
+ 4 m1_fetch
+ 4   fetch 21 at 0001
+ 4     get_pc_on_fetch 0001
+ 4     set_addr_bus 0000 -> 0001
+ 6     mreq_wait 0001
+ 6     get_ir_on_refresh 0001
+ 6     set_addr_bus 0001 -> 0001
+ 8     set_pc_on_fetch 0001 -> 0002
+ 8   set_r 01 -> 02
+ 8 imm16_read 5c3a at 0002
+ 8   get_pc_on_imm16_read 0002
+ 8   read 3a at 0002
+ 8     set_addr_bus 0001 -> 0002
+10     mreq_wait 0002
+11   read 5c at 0003
+11     set_addr_bus 0002 -> 0003
+13     mreq_wait 0003
+14   set_pc_on_imm16_read 0002 -> 0004
+14 set_iyl 00 -> 3a
+14 set_iyh 00 -> 5c
+14 set_index_rp iy -> hl
+14 done
+
+dd21d103 ld ix, 0x03d1
+ 0 m1_fetch
+ 0   fetch dd at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 set_index_rp hl -> ix
+ 4 disable_int
+ 4 m1_fetch
+ 4   fetch 21 at 0001
+ 4     get_pc_on_fetch 0001
+ 4     set_addr_bus 0000 -> 0001
+ 6     mreq_wait 0001
+ 6     get_ir_on_refresh 0001
+ 6     set_addr_bus 0001 -> 0001
+ 8     set_pc_on_fetch 0001 -> 0002
+ 8   set_r 01 -> 02
+ 8 imm16_read 03d1 at 0002
+ 8   get_pc_on_imm16_read 0002
+ 8   read d1 at 0002
+ 8     set_addr_bus 0001 -> 0002
+10     mreq_wait 0002
+11   read 03 at 0003
+11     set_addr_bus 0002 -> 0003
+13     mreq_wait 0003
+14   set_pc_on_imm16_read 0002 -> 0004
+14 set_ixl 00 -> d1
+14 set_ixh 00 -> 03
+14 set_index_rp ix -> hl
+14 done
+
+# LD rp, (nn)
+ed4bb45c ld bc, (0x5cb4)
+ 0 m1_fetch
+ 0   fetch ed at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 m1_fetch
+ 4   fetch 4b at 0001
+ 4     get_pc_on_fetch 0001
+ 4     set_addr_bus 0000 -> 0001
+ 6     mreq_wait 0001
+ 6     get_ir_on_refresh 0001
+ 6     set_addr_bus 0001 -> 0001
+ 8     set_pc_on_fetch 0001 -> 0002
+ 8   set_r 01 -> 02
+ 8 imm16_read 5cb4 at 0002
+ 8   get_pc_on_imm16_read 0002
+ 8   read b4 at 0002
+ 8     set_addr_bus 0001 -> 0002
+10     mreq_wait 0002
+11   read 5c at 0003
+11     set_addr_bus 0002 -> 0003
+13     mreq_wait 0003
+14   set_pc_on_imm16_read 0002 -> 0004
+14 read 00 at 5cb4
+14   set_addr_bus 0003 -> 5cb4
+16   mreq_wait 5cb4
+17 set_wz 0000 -> 5cb5
+17 read 00 at 5cb5
+17   set_addr_bus 5cb4 -> 5cb5
+19   mreq_wait 5cb5
+20 set_c 00 -> 00
+20 set_b 00 -> 00
+20 done
+
+# ED-prefixed 'LD rp, (nn)' is never affected by DD/FD prefixes.
+dded6bb45c (db 0xdd), xld 0xed6b, hl, (0x5cb4)
+ 0 m1_fetch
+ 0   fetch dd at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 set_index_rp hl -> ix
+ 4 disable_int
+ 4 m1_fetch
+ 4   fetch ed at 0001
+ 4     get_pc_on_fetch 0001
+ 4     set_addr_bus 0000 -> 0001
+ 6     mreq_wait 0001
+ 6     get_ir_on_refresh 0001
+ 6     set_addr_bus 0001 -> 0001
+ 8     set_pc_on_fetch 0001 -> 0002
+ 8   set_r 01 -> 02
+ 8 m1_fetch
+ 8   fetch 6b at 0002
+ 8     get_pc_on_fetch 0002
+ 8     set_addr_bus 0001 -> 0002
+10     mreq_wait 0002
+10     get_ir_on_refresh 0002
+10     set_addr_bus 0002 -> 0002
+12     set_pc_on_fetch 0002 -> 0003
+12   set_r 02 -> 03
+12 imm16_read 5cb4 at 0003
+12   get_pc_on_imm16_read 0003
+12   read b4 at 0003
+12     set_addr_bus 0002 -> 0003
+14     mreq_wait 0003
+15   read 5c at 0004
+15     set_addr_bus 0003 -> 0004
+17     mreq_wait 0004
+18   set_pc_on_imm16_read 0003 -> 0005
+18 read 00 at 5cb4
+18   set_addr_bus 0004 -> 5cb4
+20   mreq_wait 5cb4
+21 set_wz 0000 -> 5cb5
+21 read 00 at 5cb5
+21   set_addr_bus 5cb4 -> 5cb5
+23   mreq_wait 5cb5
+24 set_l 00 -> 00
+24 set_h 00 -> 00
+24 set_index_rp ix -> hl
+24 done
+
+# LD irp, (nn)
+2ab25c ld hl, (0x5cb2)
+ 0 m1_fetch
+ 0   fetch 2a at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 imm16_read 5cb2 at 0001
+ 4   get_pc_on_imm16_read 0001
+ 4   read b2 at 0001
+ 4     set_addr_bus 0000 -> 0001
+ 6     mreq_wait 0001
+ 7   read 5c at 0002
+ 7     set_addr_bus 0001 -> 0002
+ 9     mreq_wait 0002
+10   set_pc_on_imm16_read 0001 -> 0003
+10 read 00 at 5cb2
+10   set_addr_bus 0002 -> 5cb2
+12   mreq_wait 5cb2
+13 set_wz 0000 -> 5cb3
+13 read 00 at 5cb3
+13   set_addr_bus 5cb2 -> 5cb3
+15   mreq_wait 5cb3
+16 set_l 00 -> 00
+16 set_h 00 -> 00
+16 done
+
+# LD A, (nn)
+3a8d5c ld a, (0x5c8d)
+ 0 m1_fetch
+ 0   fetch 3a at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 imm16_read 5c8d at 0001
+ 4   get_pc_on_imm16_read 0001
+ 4   read 8d at 0001
+ 4     set_addr_bus 0000 -> 0001
+ 6     mreq_wait 0001
+ 7   read 5c at 0002
+ 7     set_addr_bus 0001 -> 0002
+ 9     mreq_wait 0002
+10   set_pc_on_imm16_read 0001 -> 0003
+10 set_wz 0000 -> 5c8e
+10 read 00 at 5c8d
+10   set_addr_bus 0002 -> 5c8d
+12   mreq_wait 5c8d
+13 set_a 00 -> 00
+13 done
+
+# LD (nn), A
+328d5c ld (0x5c8d), a
+ 0 m1_fetch
+ 0   fetch 32 at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 imm16_read 5c8d at 0001
+ 4   get_pc_on_imm16_read 0001
+ 4   read 8d at 0001
+ 4     set_addr_bus 0000 -> 0001
+ 6     mreq_wait 0001
+ 7   read 5c at 0002
+ 7     set_addr_bus 0001 -> 0002
+ 9     mreq_wait 0002
+10   set_pc_on_imm16_read 0001 -> 0003
+10 get_a 00
+10 set_wz 0000 -> 008e
+10 write 00 -> 00 at 5c8d
+10   set_addr_bus 0002 -> 5c8d
+12   mreq_wait 5c8d
+13 done
+
+# LD (nn), irp
+227b5c ld (0x5c7b), hl
+ 0 m1_fetch
+ 0   fetch 22 at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 imm16_read 5c7b at 0001
+ 4   get_pc_on_imm16_read 0001
+ 4   read 7b at 0001
+ 4     set_addr_bus 0000 -> 0001
+ 6     mreq_wait 0001
+ 7   read 5c at 0002
+ 7     set_addr_bus 0001 -> 0002
+ 9     mreq_wait 0002
+10   set_pc_on_imm16_read 0001 -> 0003
+10 get_l 00
+10 get_h 00
+10 write 00 -> 00 at 5c7b
+10   set_addr_bus 0002 -> 5c7b
+12   mreq_wait 5c7b
+13 set_wz 0000 -> 5c7c
+13 write 00 -> 00 at 5c7c
+13   set_addr_bus 5c7b -> 5c7c
+15   mreq_wait 5c7c
+16 done
+
+# LD (nn), rp
+ed43b45c ld (0x5cb4), bc
+ 0 m1_fetch
+ 0   fetch ed at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 m1_fetch
+ 4   fetch 43 at 0001
+ 4     get_pc_on_fetch 0001
+ 4     set_addr_bus 0000 -> 0001
+ 6     mreq_wait 0001
+ 6     get_ir_on_refresh 0001
+ 6     set_addr_bus 0001 -> 0001
+ 8     set_pc_on_fetch 0001 -> 0002
+ 8   set_r 01 -> 02
+ 8 imm16_read 5cb4 at 0002
+ 8   get_pc_on_imm16_read 0002
+ 8   read b4 at 0002
+ 8     set_addr_bus 0001 -> 0002
+10     mreq_wait 0002
+11   read 5c at 0003
+11     set_addr_bus 0002 -> 0003
+13     mreq_wait 0003
+14   set_pc_on_imm16_read 0002 -> 0004
+14 get_c 00
+14 get_b 00
+14 write 00 -> 00 at 5cb4
+14   set_addr_bus 0003 -> 5cb4
+16   mreq_wait 5cb4
+17 set_wz 0000 -> 5cb5
+17 write 00 -> 00 at 5cb5
+17   set_addr_bus 5cb4 -> 5cb5
+19   mreq_wait 5cb5
+20 done
+
+# ED-prefixed 'LD (nn), rp' is never affected by DD/FD prefixes.
+dded63b45c (db 0xdd), xld 0xed63, (0x5cb4), hl
+ 0 m1_fetch
+ 0   fetch dd at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 set_index_rp hl -> ix
+ 4 disable_int
+ 4 m1_fetch
+ 4   fetch ed at 0001
+ 4     get_pc_on_fetch 0001
+ 4     set_addr_bus 0000 -> 0001
+ 6     mreq_wait 0001
+ 6     get_ir_on_refresh 0001
+ 6     set_addr_bus 0001 -> 0001
+ 8     set_pc_on_fetch 0001 -> 0002
+ 8   set_r 01 -> 02
+ 8 m1_fetch
+ 8   fetch 63 at 0002
+ 8     get_pc_on_fetch 0002
+ 8     set_addr_bus 0001 -> 0002
+10     mreq_wait 0002
+10     get_ir_on_refresh 0002
+10     set_addr_bus 0002 -> 0002
+12     set_pc_on_fetch 0002 -> 0003
+12   set_r 02 -> 03
+12 imm16_read 5cb4 at 0003
+12   get_pc_on_imm16_read 0003
+12   read b4 at 0003
+12     set_addr_bus 0002 -> 0003
+14     mreq_wait 0003
+15   read 5c at 0004
+15     set_addr_bus 0003 -> 0004
+17     mreq_wait 0004
+18   set_pc_on_imm16_read 0003 -> 0005
+18 get_l 00
+18 get_h 00
+18 write 00 -> 00 at 5cb4
+18   set_addr_bus 0004 -> 5cb4
+20   mreq_wait 5cb4
+21 set_wz 0000 -> 5cb5
+21 write 00 -> 00 at 5cb5
+21   set_addr_bus 5cb4 -> 5cb5
+23   mreq_wait 5cb5
+24 set_index_rp ix -> hl
+24 done
+
+# LD A, (rp)
+1a ld a, (de)
+ 0 m1_fetch
+ 0   fetch 1a at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 get_e 00
+ 4 get_d 00
+ 4 set_wz 0000 -> 0001
+ 4 read 1a at 0000
+ 4   set_addr_bus 0000 -> 0000
+ 6   mreq_wait 0000
+ 7 set_a 00 -> 1a
+ 7 done
+
+# LD (rp), A
+12 ld (de), a
+ 0 m1_fetch
+ 0   fetch 12 at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 get_e 00
+ 4 get_d 00
+ 4 get_a 00
+ 4 set_wz 0000 -> 0001
+ 4 write 12 -> 00 at 0000
+ 4   set_addr_bus 0000 -> 0000
+ 6   mreq_wait 0000
+ 7 done
+
+# LD SP, irp
+f9 ld sp, hl
+ 0 m1_fetch
+ 0   fetch f9 at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 fetch_cycle_extra_2t
+ 6 get_l 00
+ 6 get_h 00
+ 6 set_sp 0000 -> 0000
+ 6 done
+
+# Block transfers.
+edb8 lddr
+ 0 m1_fetch
+ 0   fetch ed at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 m1_fetch
+ 4   fetch b8 at 0001
+ 4     get_pc_on_fetch 0001
+ 4     set_addr_bus 0000 -> 0001
+ 6     mreq_wait 0001
+ 6     get_ir_on_refresh 0001
+ 6     set_addr_bus 0001 -> 0001
+ 8     set_pc_on_fetch 0001 -> 0002
+ 8   set_r 01 -> 02
+ 8 get_c 00
+ 8 get_b 00
+ 8 get_e 00
+ 8 get_d 00
+ 8 get_l 00
+ 8 get_h 00
+ 8 get_a 00
+ 8 get_f 00
+ 8 read ed at 0000
+ 8   set_addr_bus 0001 -> 0000
+10   mreq_wait 0000
+11 write ed -> ed at 0000
+11   set_addr_bus 0000 -> 0000
+13   mreq_wait 0000
+14 write_cycle_extra_2t
+16 set_c 00 -> ff
+16 set_b 00 -> ff
+16 set_e 00 -> ff
+16 set_d 00 -> ff
+16 set_l 00 -> ff
+16 set_h 00 -> ff
+16 set_f 00 -> 0c
+16 5t_exec
+21 get_pc_on_block_instr 0002
+21 set_wz 0000 -> 0001
+21 set_pc_on_block_instr 0002 -> 0000
+21 done
+
+# NEG
+ed44 neg
+ 0 m1_fetch
+ 0   fetch ed at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 m1_fetch
+ 4   fetch 44 at 0001
+ 4     get_pc_on_fetch 0001
+ 4     set_addr_bus 0000 -> 0001
+ 6     mreq_wait 0001
+ 6     get_ir_on_refresh 0001
+ 6     set_addr_bus 0001 -> 0001
+ 8     set_pc_on_fetch 0001 -> 0002
+ 8   set_r 01 -> 02
+ 8 get_a 00
+ 8 get_f 00
+ 8 set_a 00 -> 00
+ 8 set_f 00 -> 42
+ 8 done
+
+ed4c xneg 0xed4c
+ed7c xneg 0xed7c
+
+# NOP
+00 nop
+ 0 m1_fetch
+ 0   fetch 00 at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 done
+
+ed00 xnop 0xed00
+ed3f xnop 0xed3f
+ed77 xnop 0xed77
+ed7f xnop 0xed7f
+ed80 xnop 0xed80
+ed87 xnop 0xed87
+ed9f xnop 0xed9f
+eda4 xnop 0xeda4
+eda7 xnop 0xeda7
+edac xnop 0xedac
+edaf xnop 0xedaf
+edb4 xnop 0xedb4
+edb7 xnop 0xedb7
+edbc xnop 0xedbc
+edbf xnop 0xedbf
+edc0 xnop 0xedc0
+edff xnop 0xedff
+
+# OR r
+b3 or e
+ 0 m1_fetch
+ 0   fetch b3 at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 get_e 00
+ 4 get_a 00
+ 4 set_a 00 -> 00
+ 4 set_f 00 -> 44
+ 4 done
+
+# OUT (C), r
+ed79 out (c), a
+ 0 m1_fetch
+ 0   fetch ed at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 m1_fetch
+ 4   fetch 79 at 0001
+ 4     get_pc_on_fetch 0001
+ 4     set_addr_bus 0000 -> 0001
+ 6     mreq_wait 0001
+ 6     get_ir_on_refresh 0001
+ 6     set_addr_bus 0001 -> 0001
+ 8     set_pc_on_fetch 0001 -> 0002
+ 8   set_r 01 -> 02
+ 8 get_c 00
+ 8 get_b 00
+ 8 set_wz 0000 -> 0001
+ 8 get_a 00
+ 8 output 00 at 0000
+ 8   set_addr_bus 0001 -> 0000
+11   iorq_wait 0000
+12 done
+
+# 'OUT (C), r' is never affected by DD/FD prefixes.
+dded61 (db 0xdd), out (c), h
+ 0 m1_fetch
+ 0   fetch dd at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 set_index_rp hl -> ix
+ 4 disable_int
+ 4 m1_fetch
+ 4   fetch ed at 0001
+ 4     get_pc_on_fetch 0001
+ 4     set_addr_bus 0000 -> 0001
+ 6     mreq_wait 0001
+ 6     get_ir_on_refresh 0001
+ 6     set_addr_bus 0001 -> 0001
+ 8     set_pc_on_fetch 0001 -> 0002
+ 8   set_r 01 -> 02
+ 8 m1_fetch
+ 8   fetch 61 at 0002
+ 8     get_pc_on_fetch 0002
+ 8     set_addr_bus 0001 -> 0002
+10     mreq_wait 0002
+10     get_ir_on_refresh 0002
+10     set_addr_bus 0002 -> 0002
+12     set_pc_on_fetch 0002 -> 0003
+12   set_r 02 -> 03
+12 get_c 00
+12 get_b 00
+12 set_wz 0000 -> 0001
+12 get_h 00
+12 output 00 at 0000
+12   set_addr_bus 0002 -> 0000
+15   iorq_wait 0000
+16 set_index_rp ix -> hl
+16 done
+
+# NMOS and CMOS versions of OUT (C), 0
+ed71 out (c), 0x00
+...
+ 8 output 00 at 0000
+...
+12 done
+
+.z80_variant=cmos
+ed71 out (c), 0xff
+...
+ 8 output ff at 0000
+...
+12 done
+
+# Block input.
+edb2 inir
+ 0 m1_fetch
+ 0   fetch ed at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 m1_fetch
+ 4   fetch b2 at 0001
+ 4     get_pc_on_fetch 0001
+ 4     set_addr_bus 0000 -> 0001
+ 6     mreq_wait 0001
+ 6     get_ir_on_refresh 0001
+ 6     set_addr_bus 0001 -> 0001
+ 8     set_pc_on_fetch 0001 -> 0002
+ 8   set_r 01 -> 02
+ 8 get_c 00
+ 8 get_b 00
+ 8 get_l 00
+ 8 get_h 00
+ 8 get_f 00
+ 8 fetch_cycle_extra_1t
+ 9 input at 0000
+ 9   set_addr_bus 0001 -> 0000
+12   iorq_wait 0000
+13 write ed -> ff at 0000
+13   set_addr_bus 0000 -> 0000
+15   mreq_wait 0000
+16 set_c 00 -> 00
+16 set_b 00 -> ff
+16 set_wz 0000 -> ff01
+16 set_l 00 -> 01
+16 set_h 00 -> 00
+16 set_f 00 -> bf
+16 5t_exec
+21 get_pc_on_block_instr 0002
+21 set_pc_on_block_instr 0002 -> 0000
+21 done
+
+# Block output.
+edb3 otir
+ 0 m1_fetch
+ 0   fetch ed at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 m1_fetch
+ 4   fetch b3 at 0001
+ 4     get_pc_on_fetch 0001
+ 4     set_addr_bus 0000 -> 0001
+ 6     mreq_wait 0001
+ 6     get_ir_on_refresh 0001
+ 6     set_addr_bus 0001 -> 0001
+ 8     set_pc_on_fetch 0001 -> 0002
+ 8   set_r 01 -> 02
+ 8 get_c 00
+ 8 get_b 00
+ 8 get_l 00
+ 8 get_h 00
+ 8 get_f 00
+ 8 fetch_cycle_extra_1t
+ 9 read ed at 0000
+ 9   set_addr_bus 0001 -> 0000
+11   mreq_wait 0000
+12 output ed at ff00
+12   set_addr_bus 0000 -> ff00
+15   iorq_wait ff00
+16 set_c 00 -> 00
+16 set_b 00 -> ff
+16 set_wz 0000 -> ff01
+16 set_l 00 -> 01
+16 set_h 00 -> 00
+16 set_f 00 -> ae
+16 5t_exec
+21 get_pc_on_block_instr 0002
+21 set_pc_on_block_instr 0002 -> 0000
+21 done
+
+# OUT (n), r
+d3ab out (0xab), a
+ 0 m1_fetch
+ 0   fetch d3 at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 imm8_read ab at 0001
+ 4   get_pc_on_imm8_read 0001
+ 4   read ab at 0001
+ 4     set_addr_bus 0000 -> 0001
+ 6     mreq_wait 0001
+ 7   set_pc_on_imm8_read 0001 -> 0002
+ 7 get_a 00
+ 7 output 00 at 00ab
+ 7   set_addr_bus 0001 -> 00ab
+10   iorq_wait 00ab
+11 set_wz 0000 -> 00ac
+11 done
+
+# POP rp2
+c1 pop bc
+ 0 m1_fetch
+ 0   fetch c1 at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 get_sp 0000
+ 4 read c1 at 0000
+ 4   set_addr_bus 0000 -> 0000
+ 6   mreq_wait 0000
+ 7 read 00 at 0001
+ 7   set_addr_bus 0000 -> 0001
+ 9   mreq_wait 0001
+10 set_sp 0000 -> 0002
+10 set_c 00 -> c1
+10 set_b 00 -> 00
+10 done
+
+# PUSH rp2
+c5 push bc
+ 0 m1_fetch
+ 0   fetch c5 at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 fetch_cycle_extra_1t
+ 5 get_c 00
+ 5 get_b 00
+ 5 get_sp 0000
+ 5 write 00 -> 00 at ffff
+ 5   set_addr_bus 0000 -> ffff
+ 7   mreq_wait ffff
+ 8 write 00 -> 00 at fffe
+ 8   set_addr_bus ffff -> fffe
+10   mreq_wait fffe
+11 set_sp 0000 -> fffe
+11 done
+
+# rot r
+cb00 rlc b
+ 0 m1_fetch
+ 0   fetch cb at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 m1_fetch
+ 4   fetch 00 at 0001
+ 4     get_pc_on_fetch 0001
+ 4     set_addr_bus 0000 -> 0001
+ 6     mreq_wait 0001
+ 6     get_ir_on_refresh 0001
+ 6     set_addr_bus 0001 -> 0001
+ 8     set_pc_on_fetch 0001 -> 0002
+ 8   set_r 01 -> 02
+ 8 get_b 00
+ 8 get_f 00
+ 8 set_b 00 -> 00
+ 8 set_f 00 -> 44
+ 8 done
+
+cb23 sla e
+ 0 m1_fetch
+ 0   fetch cb at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 m1_fetch
+ 4   fetch 23 at 0001
+ 4     get_pc_on_fetch 0001
+ 4     set_addr_bus 0000 -> 0001
+ 6     mreq_wait 0001
+ 6     get_ir_on_refresh 0001
+ 6     set_addr_bus 0001 -> 0001
+ 8     set_pc_on_fetch 0001 -> 0002
+ 8   set_r 01 -> 02
+ 8 get_e 00
+ 8 get_f 00
+ 8 set_e 00 -> 00
+ 8 set_f 00 -> 44
+ 8 done
+
+cb3c srl h
+ 0 m1_fetch
+ 0   fetch cb at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 m1_fetch
+ 4   fetch 3c at 0001
+ 4     get_pc_on_fetch 0001
+ 4     set_addr_bus 0000 -> 0001
+ 6     mreq_wait 0001
+ 6     get_ir_on_refresh 0001
+ 6     set_addr_bus 0001 -> 0001
+ 8     set_pc_on_fetch 0001 -> 0002
+ 8   set_r 01 -> 02
+ 8 get_h 00
+ 8 get_f 00
+ 8 set_h 00 -> 00
+ 8 set_f 00 -> 44
+ 8 done
+
+ddcb463e srl (ix + 70)
+ 0 m1_fetch
+ 0   fetch dd at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 set_index_rp hl -> ix
+ 4 disable_int
+ 4 m1_fetch
+ 4   fetch cb at 0001
+ 4     get_pc_on_fetch 0001
+ 4     set_addr_bus 0000 -> 0001
+ 6     mreq_wait 0001
+ 6     get_ir_on_refresh 0001
+ 6     set_addr_bus 0001 -> 0001
+ 8     set_pc_on_fetch 0001 -> 0002
+ 8   set_r 01 -> 02
+ 8 disp_read 46 at 0002
+ 8   get_pc_on_disp_read 0002
+ 8   read 46 at 0002
+ 8     set_addr_bus 0001 -> 0002
+10     mreq_wait 0002
+11   set_pc_on_disp_read 0002 -> 0003
+11 fetch 3e at 0003
+11   get_pc_on_fetch 0003
+11   set_addr_bus 0002 -> 0003
+13   mreq_wait 0003
+13   get_ir_on_refresh 0002
+13   set_addr_bus 0003 -> 0002
+15   set_pc_on_fetch 0003 -> 0004
+15 fetch_cycle_extra_1t
+16 get_ixl 00
+16 get_ixh 00
+16 read 00 at 0046
+16   set_addr_bus 0002 -> 0046
+18   mreq_wait 0046
+19 read_cycle_extra_1t
+20 set_wz 0000 -> 0046
+20 get_f 00
+20 get_ixl 00
+20 get_ixh 00
+20 write 00 -> 00 at 0046
+20   set_addr_bus 0046 -> 0046
+22   mreq_wait 0046
+23 set_wz 0046 -> 0046
+23 set_f 00 -> 44
+23 set_index_rp ix -> hl
+23 done
+
+# RL r
+cb11 rl c
+ 0 m1_fetch
+ 0   fetch cb at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 m1_fetch
+ 4   fetch 11 at 0001
+ 4     get_pc_on_fetch 0001
+ 4     set_addr_bus 0000 -> 0001
+ 6     mreq_wait 0001
+ 6     get_ir_on_refresh 0001
+ 6     set_addr_bus 0001 -> 0001
+ 8     set_pc_on_fetch 0001 -> 0002
+ 8   set_r 01 -> 02
+ 8 get_c 00
+ 8 get_f 00
+ 8 set_c 00 -> 00
+ 8 set_f 00 -> 44
+ 8 done
+
+# RLA
+17 rla
+ 0 m1_fetch
+ 0   fetch 17 at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 get_a 00
+ 4 get_f 00
+ 4 set_a 00 -> 00
+ 4 set_f 00 -> 00
+ 4 done
+
+# RLCA
+07 rlca
+ 0 m1_fetch
+ 0   fetch 07 at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 get_a 00
+ 4 get_f 00
+ 4 set_a 00 -> 00
+ 4 set_f 00 -> 00
+ 4 done
+
+# RLD
+ed6f rld
+ 0 m1_fetch
+ 0   fetch ed at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 m1_fetch
+ 4   fetch 6f at 0001
+ 4     get_pc_on_fetch 0001
+ 4     set_addr_bus 0000 -> 0001
+ 6     mreq_wait 0001
+ 6     get_ir_on_refresh 0001
+ 6     set_addr_bus 0001 -> 0001
+ 8     set_pc_on_fetch 0001 -> 0002
+ 8   set_r 01 -> 02
+ 8 get_a 00
+ 8 get_f 00
+ 8 get_l 00
+ 8 get_h 00
+ 8 set_wz 0000 -> 0001
+ 8 read ed at 0000
+ 8   set_addr_bus 0001 -> 0000
+10   mreq_wait 0000
+11 4t_exec
+15 set_a 00 -> 0e
+15 set_f 00 -> 08
+15 write ed -> d0 at 0000
+15   set_addr_bus 0000 -> 0000
+17   mreq_wait 0000
+18 done
+
+# RRA
+1f rra
+ 0 m1_fetch
+ 0   fetch 1f at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 get_a 00
+ 4 get_f 00
+ 4 set_a 00 -> 00
+ 4 set_f 00 -> 00
+ 4 done
+
+# RRC
+cb08 rrc b
+ 0 m1_fetch
+ 0   fetch cb at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 m1_fetch
+ 4   fetch 08 at 0001
+ 4     get_pc_on_fetch 0001
+ 4     set_addr_bus 0000 -> 0001
+ 6     mreq_wait 0001
+ 6     get_ir_on_refresh 0001
+ 6     set_addr_bus 0001 -> 0001
+ 8     set_pc_on_fetch 0001 -> 0002
+ 8   set_r 01 -> 02
+ 8 get_b 00
+ 8 get_f 00
+ 8 set_b 00 -> 00
+ 8 set_f 00 -> 44
+ 8 done
+
+# RRCA
+0f rrca
+ 0 m1_fetch
+ 0   fetch 0f at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 get_a 00
+ 4 get_f 00
+ 4 set_a 00 -> 00
+ 4 set_f 00 -> 00
+ 4 done
+
+# RRD
+ed67 rrd
+ 0 m1_fetch
+ 0   fetch ed at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 m1_fetch
+ 4   fetch 67 at 0001
+ 4     get_pc_on_fetch 0001
+ 4     set_addr_bus 0000 -> 0001
+ 6     mreq_wait 0001
+ 6     get_ir_on_refresh 0001
+ 6     set_addr_bus 0001 -> 0001
+ 8     set_pc_on_fetch 0001 -> 0002
+ 8   set_r 01 -> 02
+ 8 get_a 00
+ 8 get_f 00
+ 8 get_l 00
+ 8 get_h 00
+ 8 set_wz 0000 -> 0001
+ 8 read ed at 0000
+ 8   set_addr_bus 0001 -> 0000
+10   mreq_wait 0000
+11 4t_exec
+15 set_a 00 -> 0d
+15 set_f 00 -> 08
+15 write ed -> 0e at 0000
+15   set_addr_bus 0000 -> 0000
+17   mreq_wait 0000
+18 done
+
+# RST nn
+d7 rst 0x0010
+ 0 m1_fetch
+ 0   fetch d7 at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 fetch_cycle_extra_1t
+ 5 get_sp 0000
+ 5 write 00 -> 00 at ffff
+ 5   set_addr_bus 0000 -> ffff
+ 7   mreq_wait ffff
+ 8 write 00 -> 01 at fffe
+ 8   set_addr_bus ffff -> fffe
+10   mreq_wait fffe
+11 set_sp 0000 -> fffe
+11 set_wz 0000 -> 0010
+11 set_pc_on_call 0001 -> 0010
+11 done
+
+# RES b, r
+fdcb308e res 1, (iy + 48)
+ 0 m1_fetch
+ 0   fetch fd at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 set_index_rp hl -> iy
+ 4 disable_int
+ 4 m1_fetch
+ 4   fetch cb at 0001
+ 4     get_pc_on_fetch 0001
+ 4     set_addr_bus 0000 -> 0001
+ 6     mreq_wait 0001
+ 6     get_ir_on_refresh 0001
+ 6     set_addr_bus 0001 -> 0001
+ 8     set_pc_on_fetch 0001 -> 0002
+ 8   set_r 01 -> 02
+ 8 disp_read 30 at 0002
+ 8   get_pc_on_disp_read 0002
+ 8   read 30 at 0002
+ 8     set_addr_bus 0001 -> 0002
+10     mreq_wait 0002
+11   set_pc_on_disp_read 0002 -> 0003
+11 fetch 8e at 0003
+11   get_pc_on_fetch 0003
+11   set_addr_bus 0002 -> 0003
+13   mreq_wait 0003
+13   get_ir_on_refresh 0002
+13   set_addr_bus 0003 -> 0002
+15   set_pc_on_fetch 0003 -> 0004
+15 fetch_cycle_extra_1t
+16 get_iyl 00
+16 get_iyh 00
+16 read 00 at 0030
+16   set_addr_bus 0002 -> 0030
+18   mreq_wait 0030
+19 read_cycle_extra_1t
+20 set_wz 0000 -> 0030
+20 get_iyl 00
+20 get_iyh 00
+20 write 00 -> 00 at 0030
+20   set_addr_bus 0030 -> 0030
+22   mreq_wait 0030
+23 set_wz 0030 -> 0030
+23 set_index_rp iy -> hl
+23 done
+
+ddcb03a5 res l, 4, (ix + 3)
+ 0 m1_fetch
+ 0   fetch dd at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 set_index_rp hl -> ix
+ 4 disable_int
+ 4 m1_fetch
+ 4   fetch cb at 0001
+ 4     get_pc_on_fetch 0001
+ 4     set_addr_bus 0000 -> 0001
+ 6     mreq_wait 0001
+ 6     get_ir_on_refresh 0001
+ 6     set_addr_bus 0001 -> 0001
+ 8     set_pc_on_fetch 0001 -> 0002
+ 8   set_r 01 -> 02
+ 8 disp_read 03 at 0002
+ 8   get_pc_on_disp_read 0002
+ 8   read 03 at 0002
+ 8     set_addr_bus 0001 -> 0002
+10     mreq_wait 0002
+11   set_pc_on_disp_read 0002 -> 0003
+11 fetch a5 at 0003
+11   get_pc_on_fetch 0003
+11   set_addr_bus 0002 -> 0003
+13   mreq_wait 0003
+13   get_ir_on_refresh 0002
+13   set_addr_bus 0003 -> 0002
+15   set_pc_on_fetch 0003 -> 0004
+15 fetch_cycle_extra_1t
+16 get_ixl 00
+16 get_ixh 00
+16 read a5 at 0003
+16   set_addr_bus 0002 -> 0003
+18   mreq_wait 0003
+19 read_cycle_extra_1t
+20 set_wz 0000 -> 0003
+20 get_ixl 00
+20 get_ixh 00
+20 write a5 -> a5 at 0003
+20   set_addr_bus 0003 -> 0003
+22   mreq_wait 0003
+23 set_wz 0003 -> 0003
+23 set_l 00 -> a5
+23 set_index_rp ix -> hl
+23 done
+
+# RET
+c9 ret
+ 0 m1_fetch
+ 0   fetch c9 at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 get_sp 0000
+ 4 read c9 at 0000
+ 4   set_addr_bus 0000 -> 0000
+ 6   mreq_wait 0000
+ 7 read 00 at 0001
+ 7   set_addr_bus 0000 -> 0001
+ 9   mreq_wait 0001
+10 set_sp 0000 -> 0002
+10 set_wz 0000 -> 00c9
+10 set_pc_on_return 0001 -> 00c9
+10 done
+
+# RET cc
+c0 ret nz
+ 0 m1_fetch
+ 0   fetch c0 at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 fetch_cycle_extra_1t
+ 5 get_f 00
+ 5 get_sp 0000
+ 5 read c0 at 0000
+ 5   set_addr_bus 0000 -> 0000
+ 7   mreq_wait 0000
+ 8 read 00 at 0001
+ 8   set_addr_bus 0000 -> 0001
+10   mreq_wait 0001
+11 set_sp 0000 -> 0002
+11 set_wz 0000 -> 00c0
+11 set_pc_on_return 0001 -> 00c0
+11 done
+
+# RETI
+ed4d reti
+ 0 m1_fetch
+ 0   fetch ed at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 m1_fetch
+ 4   fetch 4d at 0001
+ 4     get_pc_on_fetch 0001
+ 4     set_addr_bus 0000 -> 0001
+ 6     mreq_wait 0001
+ 6     get_ir_on_refresh 0001
+ 6     set_addr_bus 0001 -> 0001
+ 8     set_pc_on_fetch 0001 -> 0002
+ 8   set_r 01 -> 02
+ 8 set_iff1_on_reti_retn 0 -> 0
+ 8   on_set_iff1 0 -> 0
+ 8 get_sp 0000
+ 8 read ed at 0000
+ 8   set_addr_bus 0001 -> 0000
+10   mreq_wait 0000
+11 read 4d at 0001
+11   set_addr_bus 0000 -> 0001
+13   mreq_wait 0001
+14 set_sp 0000 -> 0002
+14 set_wz 0000 -> 4ded
+14 set_pc_on_return 0002 -> 4ded
+14 done
+
+# RETN
+ed45 retn
+ 0 m1_fetch
+ 0   fetch ed at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 m1_fetch
+ 4   fetch 45 at 0001
+ 4     get_pc_on_fetch 0001
+ 4     set_addr_bus 0000 -> 0001
+ 6     mreq_wait 0001
+ 6     get_ir_on_refresh 0001
+ 6     set_addr_bus 0001 -> 0001
+ 8     set_pc_on_fetch 0001 -> 0002
+ 8   set_r 01 -> 02
+ 8 set_iff1_on_reti_retn 0 -> 0
+ 8   on_set_iff1 0 -> 0
+ 8 get_sp 0000
+ 8 read ed at 0000
+ 8   set_addr_bus 0001 -> 0000
+10   mreq_wait 0000
+11 read 45 at 0001
+11   set_addr_bus 0000 -> 0001
+13   mreq_wait 0001
+14 set_sp 0000 -> 0002
+14 set_wz 0000 -> 45ed
+14 set_pc_on_return 0002 -> 45ed
+14 done
+
+ed55 xretn 0xed55
+ed5d xretn 0xed5d
+ed65 xretn 0xed65
+ed6d xretn 0xed6d
+ed75 xretn 0xed75
+ed7d xretn 0xed7d
+
+# RR
+cb18 rr b
+ 0 m1_fetch
+ 0   fetch cb at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 m1_fetch
+ 4   fetch 18 at 0001
+ 4     get_pc_on_fetch 0001
+ 4     set_addr_bus 0000 -> 0001
+ 6     mreq_wait 0001
+ 6     get_ir_on_refresh 0001
+ 6     set_addr_bus 0001 -> 0001
+ 8     set_pc_on_fetch 0001 -> 0002
+ 8   set_r 01 -> 02
+ 8 get_b 00
+ 8 get_f 00
+ 8 set_b 00 -> 00
+ 8 set_f 00 -> 44
+ 8 done
+
+ddcb051c rr (ix + 5), h
+ 0 m1_fetch
+ 0   fetch dd at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 set_index_rp hl -> ix
+ 4 disable_int
+ 4 m1_fetch
+ 4   fetch cb at 0001
+ 4     get_pc_on_fetch 0001
+ 4     set_addr_bus 0000 -> 0001
+ 6     mreq_wait 0001
+ 6     get_ir_on_refresh 0001
+ 6     set_addr_bus 0001 -> 0001
+ 8     set_pc_on_fetch 0001 -> 0002
+ 8   set_r 01 -> 02
+ 8 disp_read 05 at 0002
+ 8   get_pc_on_disp_read 0002
+ 8   read 05 at 0002
+ 8     set_addr_bus 0001 -> 0002
+10     mreq_wait 0002
+11   set_pc_on_disp_read 0002 -> 0003
+11 fetch 1c at 0003
+11   get_pc_on_fetch 0003
+11   set_addr_bus 0002 -> 0003
+13   mreq_wait 0003
+13   get_ir_on_refresh 0002
+13   set_addr_bus 0003 -> 0002
+15   set_pc_on_fetch 0003 -> 0004
+15 fetch_cycle_extra_1t
+16 get_ixl 00
+16 get_ixh 00
+16 read 00 at 0005
+16   set_addr_bus 0002 -> 0005
+18   mreq_wait 0005
+19 read_cycle_extra_1t
+20 set_wz 0000 -> 0005
+20 get_f 00
+20 get_ixl 00
+20 get_ixh 00
+20 write 00 -> 00 at 0005
+20   set_addr_bus 0005 -> 0005
+22   mreq_wait 0005
+23 set_wz 0005 -> 0005
+23 set_h 00 -> 00
+23 set_f 00 -> 44
+23 set_index_rp ix -> hl
+23 done
+
+# SBC r
+9f sbc a, a
+ 0 m1_fetch
+ 0   fetch 9f at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 get_a 00
+ 4 get_a 00
+ 4 get_f 00
+ 4 set_a 00 -> 00
+ 4 set_f 00 -> 42
+ 4 done
+
+# SBC HL, rp
+ed52 sbc hl, de
+ 0 m1_fetch
+ 0   fetch ed at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 m1_fetch
+ 4   fetch 52 at 0001
+ 4     get_pc_on_fetch 0001
+ 4     set_addr_bus 0000 -> 0001
+ 6     mreq_wait 0001
+ 6     get_ir_on_refresh 0001
+ 6     set_addr_bus 0001 -> 0001
+ 8     set_pc_on_fetch 0001 -> 0002
+ 8   set_r 01 -> 02
+ 8 get_l 00
+ 8 get_h 00
+ 8 get_e 00
+ 8 get_d 00
+ 8 get_f 00
+ 8 4t_exec
+12 3t_exec
+15 set_wz 0000 -> 0001
+15 set_l 00 -> 00
+15 set_h 00 -> 00
+15 set_f 00 -> 42
+15 done
+
+# 'SBC HL, rp' is never affected by DD/FD prefixes.
+dded62 (db 0xdd), sbc hl, hl
+ 0 m1_fetch
+ 0   fetch dd at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 set_index_rp hl -> ix
+ 4 disable_int
+ 4 m1_fetch
+ 4   fetch ed at 0001
+ 4     get_pc_on_fetch 0001
+ 4     set_addr_bus 0000 -> 0001
+ 6     mreq_wait 0001
+ 6     get_ir_on_refresh 0001
+ 6     set_addr_bus 0001 -> 0001
+ 8     set_pc_on_fetch 0001 -> 0002
+ 8   set_r 01 -> 02
+ 8 m1_fetch
+ 8   fetch 62 at 0002
+ 8     get_pc_on_fetch 0002
+ 8     set_addr_bus 0001 -> 0002
+10     mreq_wait 0002
+10     get_ir_on_refresh 0002
+10     set_addr_bus 0002 -> 0002
+12     set_pc_on_fetch 0002 -> 0003
+12   set_r 02 -> 03
+12 get_l 00
+12 get_h 00
+12 get_l 00
+12 get_h 00
+12 get_f 00
+12 4t_exec
+16 3t_exec
+19 set_wz 0000 -> 0001
+19 set_l 00 -> 00
+19 set_h 00 -> 00
+19 set_f 00 -> 42
+19 set_index_rp ix -> hl
+19 done
+
+# SCF
+37 scf
+ 0 m1_fetch
+ 0   fetch 37 at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 get_a 00
+ 4 get_f 00
+ 4 set_f 00 -> 01
+ 4 done
+
+# SET b, r
+fdcb01ce set 1, (iy + 1)
+ 0 m1_fetch
+ 0   fetch fd at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 set_index_rp hl -> iy
+ 4 disable_int
+ 4 m1_fetch
+ 4   fetch cb at 0001
+ 4     get_pc_on_fetch 0001
+ 4     set_addr_bus 0000 -> 0001
+ 6     mreq_wait 0001
+ 6     get_ir_on_refresh 0001
+ 6     set_addr_bus 0001 -> 0001
+ 8     set_pc_on_fetch 0001 -> 0002
+ 8   set_r 01 -> 02
+ 8 disp_read 01 at 0002
+ 8   get_pc_on_disp_read 0002
+ 8   read 01 at 0002
+ 8     set_addr_bus 0001 -> 0002
+10     mreq_wait 0002
+11   set_pc_on_disp_read 0002 -> 0003
+11 fetch ce at 0003
+11   get_pc_on_fetch 0003
+11   set_addr_bus 0002 -> 0003
+13   mreq_wait 0003
+13   get_ir_on_refresh 0002
+13   set_addr_bus 0003 -> 0002
+15   set_pc_on_fetch 0003 -> 0004
+15 fetch_cycle_extra_1t
+16 get_iyl 00
+16 get_iyh 00
+16 read cb at 0001
+16   set_addr_bus 0002 -> 0001
+18   mreq_wait 0001
+19 read_cycle_extra_1t
+20 set_wz 0000 -> 0001
+20 get_iyl 00
+20 get_iyh 00
+20 write cb -> cb at 0001
+20   set_addr_bus 0001 -> 0001
+22   mreq_wait 0001
+23 set_wz 0001 -> 0001
+23 set_index_rp iy -> hl
+23 done
+
+ddcb03d4 set h, 2, (ix + 3)
+ 0 m1_fetch
+ 0   fetch dd at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 set_index_rp hl -> ix
+ 4 disable_int
+ 4 m1_fetch
+ 4   fetch cb at 0001
+ 4     get_pc_on_fetch 0001
+ 4     set_addr_bus 0000 -> 0001
+ 6     mreq_wait 0001
+ 6     get_ir_on_refresh 0001
+ 6     set_addr_bus 0001 -> 0001
+ 8     set_pc_on_fetch 0001 -> 0002
+ 8   set_r 01 -> 02
+ 8 disp_read 03 at 0002
+ 8   get_pc_on_disp_read 0002
+ 8   read 03 at 0002
+ 8     set_addr_bus 0001 -> 0002
+10     mreq_wait 0002
+11   set_pc_on_disp_read 0002 -> 0003
+11 fetch d4 at 0003
+11   get_pc_on_fetch 0003
+11   set_addr_bus 0002 -> 0003
+13   mreq_wait 0003
+13   get_ir_on_refresh 0002
+13   set_addr_bus 0003 -> 0002
+15   set_pc_on_fetch 0003 -> 0004
+15 fetch_cycle_extra_1t
+16 get_ixl 00
+16 get_ixh 00
+16 read d4 at 0003
+16   set_addr_bus 0002 -> 0003
+18   mreq_wait 0003
+19 read_cycle_extra_1t
+20 set_wz 0000 -> 0003
+20 get_ixl 00
+20 get_ixh 00
+20 write d4 -> d4 at 0003
+20   set_addr_bus 0003 -> 0003
+22   mreq_wait 0003
+23 set_wz 0003 -> 0003
+23 set_h 00 -> d4
+23 set_index_rp ix -> hl
+23 done
+
+# SLL r
+cb30 sll b
+ 0 m1_fetch
+ 0   fetch cb at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 m1_fetch
+ 4   fetch 30 at 0001
+ 4     get_pc_on_fetch 0001
+ 4     set_addr_bus 0000 -> 0001
+ 6     mreq_wait 0001
+ 6     get_ir_on_refresh 0001
+ 6     set_addr_bus 0001 -> 0001
+ 8     set_pc_on_fetch 0001 -> 0002
+ 8   set_r 01 -> 02
+ 8 get_b 00
+ 8 get_f 00
+ 8 set_b 00 -> 01
+ 8 set_f 00 -> 00
+ 8 done
+
+# Test that CF is computed from the original value of the operand.
+.b=80
+cb30 sll b
+...
+ 8 set_b 80 -> 01
+ 8 set_f 00 -> 01
+ 8 done
+
+# SRA r
+cb28 sra b
+ 0 m1_fetch
+ 0   fetch cb at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 m1_fetch
+ 4   fetch 28 at 0001
+ 4     get_pc_on_fetch 0001
+ 4     set_addr_bus 0000 -> 0001
+ 6     mreq_wait 0001
+ 6     get_ir_on_refresh 0001
+ 6     set_addr_bus 0001 -> 0001
+ 8     set_pc_on_fetch 0001 -> 0002
+ 8   set_r 01 -> 02
+ 8 get_b 00
+ 8 get_f 00
+ 8 set_b 00 -> 00
+ 8 set_f 00 -> 44
+ 8 done
+
+# Test that CF is computed from the original value of the operand.
+.b=01
+cb28 sra b
+...
+ 8 set_b 01 -> 00
+ 8 set_f 00 -> 45
+ 8 done
+
+# SUB r
+91 sub c
+ 0 m1_fetch
+ 0   fetch 91 at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 get_c 00
+ 4 get_a 00
+ 4 set_a 00 -> 00
+ 4 set_f 00 -> 42
+ 4 done
+
+# XOR r
+af xor a
+ 0 m1_fetch
+ 0   fetch af at 0000
+ 0     get_pc_on_fetch 0000
+ 0     set_addr_bus 0000 -> 0000
+ 2     mreq_wait 0000
+ 2     get_ir_on_refresh 0000
+ 2     set_addr_bus 0000 -> 0000
+ 4     set_pc_on_fetch 0000 -> 0001
+ 4   set_r 00 -> 01
+ 4 get_a 00
+ 4 get_a 00
+ 4 set_a 00 -> 00
+ 4 set_f 00 -> 44
+ 4 done
+
+# All instructions.
+00 nop
+010000 ld bc, 0x0000
+02 ld (bc), a
+03 inc bc
+04 inc b
+05 dec b
+0600 ld b, 0x00
+07 rlca
+08 ex af, af'
+09 add hl, bc
+0a ld a, (bc)
+0b dec bc
+0c inc c
+0d dec c
+0e00 ld c, 0x00
+0f rrca
+1000 djnz $ + 2
+110000 ld de, 0x0000
+12 ld (de), a
+13 inc de
+14 inc d
+15 dec d
+1600 ld d, 0x00
+17 rla
+1800 jr $ + 2
+19 add hl, de
+1a ld a, (de)
+1b dec de
+1c inc e
+1d dec e
+1e00 ld e, 0x00
+1f rra
+2000 jr nz, $ + 2
+210000 ld hl, 0x0000
+220000 ld (0x0000), hl
+23 inc hl
+24 inc h
+25 dec h
+2600 ld h, 0x00
+27 daa
+2800 jr z, $ + 2
+29 add hl, hl
+2a0000 ld hl, (0x0000)
+2b dec hl
+2c inc l
+2d dec l
+2e00 ld l, 0x00
+2f cpl
+3000 jr nc, $ + 2
+310000 ld sp, 0x0000
+320000 ld (0x0000), a
+33 inc sp
+34 inc (hl)
+35 dec (hl)
+3600 ld (hl), 0x00
+37 scf
+3800 jr c, $ + 2
+39 add hl, sp
+3a0000 ld a, (0x0000)
+3b dec sp
+3c inc a
+3d dec a
+3e00 ld a, 0x00
+3f ccf
+40 ld b, b
+41 ld b, c
+42 ld b, d
+43 ld b, e
+44 ld b, h
+45 ld b, l
+46 ld b, (hl)
+47 ld b, a
+48 ld c, b
+49 ld c, c
+4a ld c, d
+4b ld c, e
+4c ld c, h
+4d ld c, l
+4e ld c, (hl)
+4f ld c, a
+50 ld d, b
+51 ld d, c
+52 ld d, d
+53 ld d, e
+54 ld d, h
+55 ld d, l
+56 ld d, (hl)
+57 ld d, a
+58 ld e, b
+59 ld e, c
+5a ld e, d
+5b ld e, e
+5c ld e, h
+5d ld e, l
+5e ld e, (hl)
+5f ld e, a
+60 ld h, b
+61 ld h, c
+62 ld h, d
+63 ld h, e
+64 ld h, h
+65 ld h, l
+66 ld h, (hl)
+67 ld h, a
+68 ld l, b
+69 ld l, c
+6a ld l, d
+6b ld l, e
+6c ld l, h
+6d ld l, l
+6e ld l, (hl)
+6f ld l, a
+70 ld (hl), b
+71 ld (hl), c
+72 ld (hl), d
+73 ld (hl), e
+74 ld (hl), h
+75 ld (hl), l
+76 halt
+77 ld (hl), a
+78 ld a, b
+79 ld a, c
+7a ld a, d
+7b ld a, e
+7c ld a, h
+7d ld a, l
+7e ld a, (hl)
+7f ld a, a
+80 add a, b
+81 add a, c
+82 add a, d
+83 add a, e
+84 add a, h
+85 add a, l
+86 add a, (hl)
+87 add a, a
+88 adc a, b
+89 adc a, c
+8a adc a, d
+8b adc a, e
+8c adc a, h
+8d adc a, l
+8e adc a, (hl)
+8f adc a, a
+90 sub b
+91 sub c
+92 sub d
+93 sub e
+94 sub h
+95 sub l
+96 sub (hl)
+97 sub a
+98 sbc a, b
+99 sbc a, c
+9a sbc a, d
+9b sbc a, e
+9c sbc a, h
+9d sbc a, l
+9e sbc a, (hl)
+9f sbc a, a
+a0 and b
+a1 and c
+a2 and d
+a3 and e
+a4 and h
+a5 and l
+a6 and (hl)
+a7 and a
+a8 xor b
+a9 xor c
+aa xor d
+ab xor e
+ac xor h
+ad xor l
+ae xor (hl)
+af xor a
+b0 or b
+b1 or c
+b2 or d
+b3 or e
+b4 or h
+b5 or l
+b6 or (hl)
+b7 or a
+b8 cp b
+b9 cp c
+ba cp d
+bb cp e
+bc cp h
+bd cp l
+be cp (hl)
+bf cp a
+c0 ret nz
+c1 pop bc
+c20000 jp nz, 0x0000
+c30000 jp 0x0000
+c40000 call nz, 0x0000
+c5 push bc
+c600 add a, 0x00
+c7 rst 0x0000
+c8 ret z
+c9 ret
+ca0000 jp z, 0x0000
+
+cb00 rlc b
+cb01 rlc c
+cb02 rlc d
+cb03 rlc e
+cb04 rlc h
+cb05 rlc l
+cb06 rlc (hl)
+cb07 rlc a
+cb08 rrc b
+cb09 rrc c
+cb0a rrc d
+cb0b rrc e
+cb0c rrc h
+cb0d rrc l
+cb0e rrc (hl)
+cb0f rrc a
+cb10 rl b
+cb11 rl c
+cb12 rl d
+cb13 rl e
+cb14 rl h
+cb15 rl l
+cb16 rl (hl)
+cb17 rl a
+cb18 rr b
+cb19 rr c
+cb1a rr d
+cb1b rr e
+cb1c rr h
+cb1d rr l
+cb1e rr (hl)
+cb1f rr a
+cb20 sla b
+cb21 sla c
+cb22 sla d
+cb23 sla e
+cb24 sla h
+cb25 sla l
+cb26 sla (hl)
+cb27 sla a
+cb28 sra b
+cb29 sra c
+cb2a sra d
+cb2b sra e
+cb2c sra h
+cb2d sra l
+cb2e sra (hl)
+cb2f sra a
+cb30 sll b
+cb31 sll c
+cb32 sll d
+cb33 sll e
+cb34 sll h
+cb35 sll l
+cb36 sll (hl)
+cb37 sll a
+cb38 srl b
+cb39 srl c
+cb3a srl d
+cb3b srl e
+cb3c srl h
+cb3d srl l
+cb3e srl (hl)
+cb3f srl a
+cb40 bit 0, b
+cb41 bit 0, c
+cb42 bit 0, d
+cb43 bit 0, e
+cb44 bit 0, h
+cb45 bit 0, l
+cb46 bit 0, (hl)
+cb47 bit 0, a
+cb48 bit 1, b
+cb49 bit 1, c
+cb4a bit 1, d
+cb4b bit 1, e
+cb4c bit 1, h
+cb4d bit 1, l
+cb4e bit 1, (hl)
+cb4f bit 1, a
+cb50 bit 2, b
+cb51 bit 2, c
+cb52 bit 2, d
+cb53 bit 2, e
+cb54 bit 2, h
+cb55 bit 2, l
+cb56 bit 2, (hl)
+cb57 bit 2, a
+cb58 bit 3, b
+cb59 bit 3, c
+cb5a bit 3, d
+cb5b bit 3, e
+cb5c bit 3, h
+cb5d bit 3, l
+cb5e bit 3, (hl)
+cb5f bit 3, a
+cb60 bit 4, b
+cb61 bit 4, c
+cb62 bit 4, d
+cb63 bit 4, e
+cb64 bit 4, h
+cb65 bit 4, l
+cb66 bit 4, (hl)
+cb67 bit 4, a
+cb68 bit 5, b
+cb69 bit 5, c
+cb6a bit 5, d
+cb6b bit 5, e
+cb6c bit 5, h
+cb6d bit 5, l
+cb6e bit 5, (hl)
+cb6f bit 5, a
+cb70 bit 6, b
+cb71 bit 6, c
+cb72 bit 6, d
+cb73 bit 6, e
+cb74 bit 6, h
+cb75 bit 6, l
+cb76 bit 6, (hl)
+cb77 bit 6, a
+cb78 bit 7, b
+cb79 bit 7, c
+cb7a bit 7, d
+cb7b bit 7, e
+cb7c bit 7, h
+cb7d bit 7, l
+cb7e bit 7, (hl)
+cb7f bit 7, a
+cb80 res 0, b
+cb81 res 0, c
+cb82 res 0, d
+cb83 res 0, e
+cb84 res 0, h
+cb85 res 0, l
+cb86 res 0, (hl)
+cb87 res 0, a
+cb88 res 1, b
+cb89 res 1, c
+cb8a res 1, d
+cb8b res 1, e
+cb8c res 1, h
+cb8d res 1, l
+cb8e res 1, (hl)
+cb8f res 1, a
+cb90 res 2, b
+cb91 res 2, c
+cb92 res 2, d
+cb93 res 2, e
+cb94 res 2, h
+cb95 res 2, l
+cb96 res 2, (hl)
+cb97 res 2, a
+cb98 res 3, b
+cb99 res 3, c
+cb9a res 3, d
+cb9b res 3, e
+cb9c res 3, h
+cb9d res 3, l
+cb9e res 3, (hl)
+cb9f res 3, a
+cba0 res 4, b
+cba1 res 4, c
+cba2 res 4, d
+cba3 res 4, e
+cba4 res 4, h
+cba5 res 4, l
+cba6 res 4, (hl)
+cba7 res 4, a
+cba8 res 5, b
+cba9 res 5, c
+cbaa res 5, d
+cbab res 5, e
+cbac res 5, h
+cbad res 5, l
+cbae res 5, (hl)
+cbaf res 5, a
+cbb0 res 6, b
+cbb1 res 6, c
+cbb2 res 6, d
+cbb3 res 6, e
+cbb4 res 6, h
+cbb5 res 6, l
+cbb6 res 6, (hl)
+cbb7 res 6, a
+cbb8 res 7, b
+cbb9 res 7, c
+cbba res 7, d
+cbbb res 7, e
+cbbc res 7, h
+cbbd res 7, l
+cbbe res 7, (hl)
+cbbf res 7, a
+cbc0 set 0, b
+cbc1 set 0, c
+cbc2 set 0, d
+cbc3 set 0, e
+cbc4 set 0, h
+cbc5 set 0, l
+cbc6 set 0, (hl)
+cbc7 set 0, a
+cbc8 set 1, b
+cbc9 set 1, c
+cbca set 1, d
+cbcb set 1, e
+cbcc set 1, h
+cbcd set 1, l
+cbce set 1, (hl)
+cbcf set 1, a
+cbd0 set 2, b
+cbd1 set 2, c
+cbd2 set 2, d
+cbd3 set 2, e
+cbd4 set 2, h
+cbd5 set 2, l
+cbd6 set 2, (hl)
+cbd7 set 2, a
+cbd8 set 3, b
+cbd9 set 3, c
+cbda set 3, d
+cbdb set 3, e
+cbdc set 3, h
+cbdd set 3, l
+cbde set 3, (hl)
+cbdf set 3, a
+cbe0 set 4, b
+cbe1 set 4, c
+cbe2 set 4, d
+cbe3 set 4, e
+cbe4 set 4, h
+cbe5 set 4, l
+cbe6 set 4, (hl)
+cbe7 set 4, a
+cbe8 set 5, b
+cbe9 set 5, c
+cbea set 5, d
+cbeb set 5, e
+cbec set 5, h
+cbed set 5, l
+cbee set 5, (hl)
+cbef set 5, a
+cbf0 set 6, b
+cbf1 set 6, c
+cbf2 set 6, d
+cbf3 set 6, e
+cbf4 set 6, h
+cbf5 set 6, l
+cbf6 set 6, (hl)
+cbf7 set 6, a
+cbf8 set 7, b
+cbf9 set 7, c
+cbfa set 7, d
+cbfb set 7, e
+cbfc set 7, h
+cbfd set 7, l
+cbfe set 7, (hl)
+cbff set 7, a
+
+cc0000 call z, 0x0000
+cd0000 call 0x0000
+ce00 adc a, 0x00
+cf rst 0x0008
+d0 ret nc
+d1 pop de
+d20000 jp nc, 0x0000
+d300 out (0x00), a
+d40000 call nc, 0x0000
+d5 push de
+d600 sub 0x00
+d7 rst 0x0010
+d8 ret c
+d9 exx
+da0000 jp c, 0x0000
+db00 in a, (0x00)
+dc0000 call c, 0x0000
+
+dd00 (db 0xdd), nop
+dd010000 (db 0xdd), ld bc, 0x0000
+dd02 (db 0xdd), ld (bc), a
+dd03 (db 0xdd), inc bc
+dd04 (db 0xdd), inc b
+dd05 (db 0xdd), dec b
+dd0600 (db 0xdd), ld b, 0x00
+dd07 (db 0xdd), rlca
+dd08 (db 0xdd), ex af, af'
+dd09 add ix, bc
+dd0a (db 0xdd), ld a, (bc)
+dd0b (db 0xdd), dec bc
+dd0c (db 0xdd), inc c
+dd0d (db 0xdd), dec c
+dd0e00 (db 0xdd), ld c, 0x00
+dd0f (db 0xdd), rrca
+dd1000 (db 0xdd), djnz $ + 2
+dd110000 (db 0xdd), ld de, 0x0000
+dd12 (db 0xdd), ld (de), a
+dd13 (db 0xdd), inc de
+dd14 (db 0xdd), inc d
+dd15 (db 0xdd), dec d
+dd1600 (db 0xdd), ld d, 0x00
+dd17 (db 0xdd), rla
+dd1800 (db 0xdd), jr $ + 2
+dd19 add ix, de
+dd1a (db 0xdd), ld a, (de)
+dd1b (db 0xdd), dec de
+dd1c (db 0xdd), inc e
+dd1d (db 0xdd), dec e
+dd1e00 (db 0xdd), ld e, 0x00
+dd1f (db 0xdd), rra
+dd2000 (db 0xdd), jr nz, $ + 2
+dd210000 ld ix, 0x0000
+dd220000 ld (0x0000), ix
+dd23 inc ix
+dd24 inc ixh
+dd25 dec ixh
+dd2600 ld ixh, 0x00
+dd27 (db 0xdd), daa
+dd2800 (db 0xdd), jr z, $ + 2
+dd29 add ix, ix
+dd2a0000 ld ix, (0x0000)
+dd2b dec ix
+dd2c inc ixl
+dd2d dec ixl
+dd2e00 ld ixl, 0x00
+dd2f (db 0xdd), cpl
+dd3000 (db 0xdd), jr nc, $ + 2
+dd310000 (db 0xdd), ld sp, 0x0000
+dd320000 (db 0xdd), ld (0x0000), a
+dd33 (db 0xdd), inc sp
+dd3400 inc (ix + 0)
+dd3500 dec (ix + 0)
+dd360000 ld (ix + 0), 0x00
+dd37 (db 0xdd), scf
+dd3800 (db 0xdd), jr c, $ + 2
+dd39 add ix, sp
+dd3a0000 (db 0xdd), ld a, (0x0000)
+dd3b (db 0xdd), dec sp
+dd3c (db 0xdd), inc a
+dd3d (db 0xdd), dec a
+dd3e00 (db 0xdd), ld a, 0x00
+dd3f (db 0xdd), ccf
+dd40 (db 0xdd), ld b, b
+dd41 (db 0xdd), ld b, c
+dd42 (db 0xdd), ld b, d
+dd43 (db 0xdd), ld b, e
+dd44 ld b, ixh
+dd45 ld b, ixl
+dd4600 ld b, (ix + 0)
+dd47 (db 0xdd), ld b, a
+dd48 (db 0xdd), ld c, b
+dd49 (db 0xdd), ld c, c
+dd4a (db 0xdd), ld c, d
+dd4b (db 0xdd), ld c, e
+dd4c ld c, ixh
+dd4d ld c, ixl
+dd4e00 ld c, (ix + 0)
+dd4f (db 0xdd), ld c, a
+dd50 (db 0xdd), ld d, b
+dd51 (db 0xdd), ld d, c
+dd52 (db 0xdd), ld d, d
+dd53 (db 0xdd), ld d, e
+dd54 ld d, ixh
+dd55 ld d, ixl
+dd5600 ld d, (ix + 0)
+dd57 (db 0xdd), ld d, a
+dd58 (db 0xdd), ld e, b
+dd59 (db 0xdd), ld e, c
+dd5a (db 0xdd), ld e, d
+dd5b (db 0xdd), ld e, e
+dd5c ld e, ixh
+dd5d ld e, ixl
+dd5e00 ld e, (ix + 0)
+dd5f (db 0xdd), ld e, a
+dd60 ld ixh, b
+dd61 ld ixh, c
+dd62 ld ixh, d
+dd63 ld ixh, e
+dd64 ld ixh, ixh
+dd65 ld ixh, ixl
+dd6600 ld h, (ix + 0)
+dd67 ld ixh, a
+dd68 ld ixl, b
+dd69 ld ixl, c
+dd6a ld ixl, d
+dd6b ld ixl, e
+dd6c ld ixl, ixh
+dd6d ld ixl, ixl
+dd6e00 ld l, (ix + 0)
+dd6f ld ixl, a
+dd7000 ld (ix + 0), b
+dd7100 ld (ix + 0), c
+dd7200 ld (ix + 0), d
+dd7300 ld (ix + 0), e
+dd7400 ld (ix + 0), h
+dd7500 ld (ix + 0), l
+dd76 (db 0xdd), halt
+dd7700 ld (ix + 0), a
+dd78 (db 0xdd), ld a, b
+dd79 (db 0xdd), ld a, c
+dd7a (db 0xdd), ld a, d
+dd7b (db 0xdd), ld a, e
+dd7c ld a, ixh
+dd7d ld a, ixl
+dd7e00 ld a, (ix + 0)
+dd7f (db 0xdd), ld a, a
+dd80 (db 0xdd), add a, b
+dd81 (db 0xdd), add a, c
+dd82 (db 0xdd), add a, d
+dd83 (db 0xdd), add a, e
+dd84 add a, ixh
+dd85 add a, ixl
+dd8600 add a, (ix + 0)
+dd87 (db 0xdd), add a, a
+dd88 (db 0xdd), adc a, b
+dd89 (db 0xdd), adc a, c
+dd8a (db 0xdd), adc a, d
+dd8b (db 0xdd), adc a, e
+dd8c adc a, ixh
+dd8d adc a, ixl
+dd8e00 adc a, (ix + 0)
+dd8f (db 0xdd), adc a, a
+dd90 (db 0xdd), sub b
+dd91 (db 0xdd), sub c
+dd92 (db 0xdd), sub d
+dd93 (db 0xdd), sub e
+dd94 sub ixh
+dd95 sub ixl
+dd9600 sub (ix + 0)
+dd97 (db 0xdd), sub a
+dd98 (db 0xdd), sbc a, b
+dd99 (db 0xdd), sbc a, c
+dd9a (db 0xdd), sbc a, d
+dd9b (db 0xdd), sbc a, e
+dd9c sbc a, ixh
+dd9d sbc a, ixl
+dd9e00 sbc a, (ix + 0)
+dd9f (db 0xdd), sbc a, a
+dda0 (db 0xdd), and b
+dda1 (db 0xdd), and c
+dda2 (db 0xdd), and d
+dda3 (db 0xdd), and e
+dda4 and ixh
+dda5 and ixl
+dda600 and (ix + 0)
+dda7 (db 0xdd), and a
+dda8 (db 0xdd), xor b
+dda9 (db 0xdd), xor c
+ddaa (db 0xdd), xor d
+ddab (db 0xdd), xor e
+ddac xor ixh
+ddad xor ixl
+ddae00 xor (ix + 0)
+ddaf (db 0xdd), xor a
+ddb0 (db 0xdd), or b
+ddb1 (db 0xdd), or c
+ddb2 (db 0xdd), or d
+ddb3 (db 0xdd), or e
+ddb4 or ixh
+ddb5 or ixl
+ddb600 or (ix + 0)
+ddb7 (db 0xdd), or a
+ddb8 (db 0xdd), cp b
+ddb9 (db 0xdd), cp c
+ddba (db 0xdd), cp d
+ddbb (db 0xdd), cp e
+ddbc cp ixh
+ddbd cp ixl
+ddbe00 cp (ix + 0)
+ddbf (db 0xdd), cp a
+ddc0 (db 0xdd), ret nz
+ddc1 (db 0xdd), pop bc
+ddc20000 (db 0xdd), jp nz, 0x0000
+ddc30000 (db 0xdd), jp 0x0000
+ddc40000 (db 0xdd), call nz, 0x0000
+ddc5 (db 0xdd), push bc
+ddc600 (db 0xdd), add a, 0x00
+ddc7 (db 0xdd), rst 0x0000
+ddc8 (db 0xdd), ret z
+ddc9 (db 0xdd), ret
+ddca0000 (db 0xdd), jp z, 0x0000
+
+ddcb0000 rlc (ix + 0), b
+ddcb0001 rlc (ix + 0), c
+ddcb0002 rlc (ix + 0), d
+ddcb0003 rlc (ix + 0), e
+ddcb0004 rlc (ix + 0), h
+ddcb0005 rlc (ix + 0), l
+ddcb0006 rlc (ix + 0)
+ddcb0007 rlc (ix + 0), a
+ddcb0008 rrc (ix + 0), b
+ddcb0009 rrc (ix + 0), c
+ddcb000a rrc (ix + 0), d
+ddcb000b rrc (ix + 0), e
+ddcb000c rrc (ix + 0), h
+ddcb000d rrc (ix + 0), l
+ddcb000e rrc (ix + 0)
+ddcb000f rrc (ix + 0), a
+ddcb0010 rl (ix + 0), b
+ddcb0011 rl (ix + 0), c
+ddcb0012 rl (ix + 0), d
+ddcb0013 rl (ix + 0), e
+ddcb0014 rl (ix + 0), h
+ddcb0015 rl (ix + 0), l
+ddcb0016 rl (ix + 0)
+ddcb0017 rl (ix + 0), a
+ddcb0018 rr (ix + 0), b
+ddcb0019 rr (ix + 0), c
+ddcb001a rr (ix + 0), d
+ddcb001b rr (ix + 0), e
+ddcb001c rr (ix + 0), h
+ddcb001d rr (ix + 0), l
+ddcb001e rr (ix + 0)
+ddcb001f rr (ix + 0), a
+ddcb0020 sla (ix + 0), b
+ddcb0021 sla (ix + 0), c
+ddcb0022 sla (ix + 0), d
+ddcb0023 sla (ix + 0), e
+ddcb0024 sla (ix + 0), h
+ddcb0025 sla (ix + 0), l
+ddcb0026 sla (ix + 0)
+ddcb0027 sla (ix + 0), a
+ddcb0028 sra (ix + 0), b
+ddcb0029 sra (ix + 0), c
+ddcb002a sra (ix + 0), d
+ddcb002b sra (ix + 0), e
+ddcb002c sra (ix + 0), h
+ddcb002d sra (ix + 0), l
+ddcb002e sra (ix + 0)
+ddcb002f sra (ix + 0), a
+ddcb0030 sll (ix + 0), b
+ddcb0031 sll (ix + 0), c
+ddcb0032 sll (ix + 0), d
+ddcb0033 sll (ix + 0), e
+ddcb0034 sll (ix + 0), h
+ddcb0035 sll (ix + 0), l
+ddcb0036 sll (ix + 0)
+ddcb0037 sll (ix + 0), a
+ddcb0038 srl (ix + 0), b
+ddcb0039 srl (ix + 0), c
+ddcb003a srl (ix + 0), d
+ddcb003b srl (ix + 0), e
+ddcb003c srl (ix + 0), h
+ddcb003d srl (ix + 0), l
+ddcb003e srl (ix + 0)
+ddcb003f srl (ix + 0), a
+ddcb0040 bit b, 0, (ix + 0)
+ddcb0041 bit c, 0, (ix + 0)
+ddcb0042 bit d, 0, (ix + 0)
+ddcb0043 bit e, 0, (ix + 0)
+ddcb0044 bit h, 0, (ix + 0)
+ddcb0045 bit l, 0, (ix + 0)
+ddcb0046 bit 0, (ix + 0)
+ddcb0047 bit a, 0, (ix + 0)
+ddcb0048 bit b, 1, (ix + 0)
+ddcb0049 bit c, 1, (ix + 0)
+ddcb004a bit d, 1, (ix + 0)
+ddcb004b bit e, 1, (ix + 0)
+ddcb004c bit h, 1, (ix + 0)
+ddcb004d bit l, 1, (ix + 0)
+ddcb004e bit 1, (ix + 0)
+ddcb004f bit a, 1, (ix + 0)
+ddcb0050 bit b, 2, (ix + 0)
+ddcb0051 bit c, 2, (ix + 0)
+ddcb0052 bit d, 2, (ix + 0)
+ddcb0053 bit e, 2, (ix + 0)
+ddcb0054 bit h, 2, (ix + 0)
+ddcb0055 bit l, 2, (ix + 0)
+ddcb0056 bit 2, (ix + 0)
+ddcb0057 bit a, 2, (ix + 0)
+ddcb0058 bit b, 3, (ix + 0)
+ddcb0059 bit c, 3, (ix + 0)
+ddcb005a bit d, 3, (ix + 0)
+ddcb005b bit e, 3, (ix + 0)
+ddcb005c bit h, 3, (ix + 0)
+ddcb005d bit l, 3, (ix + 0)
+ddcb005e bit 3, (ix + 0)
+ddcb005f bit a, 3, (ix + 0)
+ddcb0060 bit b, 4, (ix + 0)
+ddcb0061 bit c, 4, (ix + 0)
+ddcb0062 bit d, 4, (ix + 0)
+ddcb0063 bit e, 4, (ix + 0)
+ddcb0064 bit h, 4, (ix + 0)
+ddcb0065 bit l, 4, (ix + 0)
+ddcb0066 bit 4, (ix + 0)
+ddcb0067 bit a, 4, (ix + 0)
+ddcb0068 bit b, 5, (ix + 0)
+ddcb0069 bit c, 5, (ix + 0)
+ddcb006a bit d, 5, (ix + 0)
+ddcb006b bit e, 5, (ix + 0)
+ddcb006c bit h, 5, (ix + 0)
+ddcb006d bit l, 5, (ix + 0)
+ddcb006e bit 5, (ix + 0)
+ddcb006f bit a, 5, (ix + 0)
+ddcb0070 bit b, 6, (ix + 0)
+ddcb0071 bit c, 6, (ix + 0)
+ddcb0072 bit d, 6, (ix + 0)
+ddcb0073 bit e, 6, (ix + 0)
+ddcb0074 bit h, 6, (ix + 0)
+ddcb0075 bit l, 6, (ix + 0)
+ddcb0076 bit 6, (ix + 0)
+ddcb0077 bit a, 6, (ix + 0)
+ddcb0078 bit b, 7, (ix + 0)
+ddcb0079 bit c, 7, (ix + 0)
+ddcb007a bit d, 7, (ix + 0)
+ddcb007b bit e, 7, (ix + 0)
+ddcb007c bit h, 7, (ix + 0)
+ddcb007d bit l, 7, (ix + 0)
+ddcb007e bit 7, (ix + 0)
+ddcb007f bit a, 7, (ix + 0)
+ddcb0080 res b, 0, (ix + 0)
+ddcb0081 res c, 0, (ix + 0)
+ddcb0082 res d, 0, (ix + 0)
+ddcb0083 res e, 0, (ix + 0)
+ddcb0084 res h, 0, (ix + 0)
+ddcb0085 res l, 0, (ix + 0)
+ddcb0086 res 0, (ix + 0)
+ddcb0087 res a, 0, (ix + 0)
+ddcb0088 res b, 1, (ix + 0)
+ddcb0089 res c, 1, (ix + 0)
+ddcb008a res d, 1, (ix + 0)
+ddcb008b res e, 1, (ix + 0)
+ddcb008c res h, 1, (ix + 0)
+ddcb008d res l, 1, (ix + 0)
+ddcb008e res 1, (ix + 0)
+ddcb008f res a, 1, (ix + 0)
+ddcb0090 res b, 2, (ix + 0)
+ddcb0091 res c, 2, (ix + 0)
+ddcb0092 res d, 2, (ix + 0)
+ddcb0093 res e, 2, (ix + 0)
+ddcb0094 res h, 2, (ix + 0)
+ddcb0095 res l, 2, (ix + 0)
+ddcb0096 res 2, (ix + 0)
+ddcb0097 res a, 2, (ix + 0)
+ddcb0098 res b, 3, (ix + 0)
+ddcb0099 res c, 3, (ix + 0)
+ddcb009a res d, 3, (ix + 0)
+ddcb009b res e, 3, (ix + 0)
+ddcb009c res h, 3, (ix + 0)
+ddcb009d res l, 3, (ix + 0)
+ddcb009e res 3, (ix + 0)
+ddcb009f res a, 3, (ix + 0)
+ddcb00a0 res b, 4, (ix + 0)
+ddcb00a1 res c, 4, (ix + 0)
+ddcb00a2 res d, 4, (ix + 0)
+ddcb00a3 res e, 4, (ix + 0)
+ddcb00a4 res h, 4, (ix + 0)
+ddcb00a5 res l, 4, (ix + 0)
+ddcb00a6 res 4, (ix + 0)
+ddcb00a7 res a, 4, (ix + 0)
+ddcb00a8 res b, 5, (ix + 0)
+ddcb00a9 res c, 5, (ix + 0)
+ddcb00aa res d, 5, (ix + 0)
+ddcb00ab res e, 5, (ix + 0)
+ddcb00ac res h, 5, (ix + 0)
+ddcb00ad res l, 5, (ix + 0)
+ddcb00ae res 5, (ix + 0)
+ddcb00af res a, 5, (ix + 0)
+ddcb00b0 res b, 6, (ix + 0)
+ddcb00b1 res c, 6, (ix + 0)
+ddcb00b2 res d, 6, (ix + 0)
+ddcb00b3 res e, 6, (ix + 0)
+ddcb00b4 res h, 6, (ix + 0)
+ddcb00b5 res l, 6, (ix + 0)
+ddcb00b6 res 6, (ix + 0)
+ddcb00b7 res a, 6, (ix + 0)
+ddcb00b8 res b, 7, (ix + 0)
+ddcb00b9 res c, 7, (ix + 0)
+ddcb00ba res d, 7, (ix + 0)
+ddcb00bb res e, 7, (ix + 0)
+ddcb00bc res h, 7, (ix + 0)
+ddcb00bd res l, 7, (ix + 0)
+ddcb00be res 7, (ix + 0)
+ddcb00bf res a, 7, (ix + 0)
+ddcb00c0 set b, 0, (ix + 0)
+ddcb00c1 set c, 0, (ix + 0)
+ddcb00c2 set d, 0, (ix + 0)
+ddcb00c3 set e, 0, (ix + 0)
+ddcb00c4 set h, 0, (ix + 0)
+ddcb00c5 set l, 0, (ix + 0)
+ddcb00c6 set 0, (ix + 0)
+ddcb00c7 set a, 0, (ix + 0)
+ddcb00c8 set b, 1, (ix + 0)
+ddcb00c9 set c, 1, (ix + 0)
+ddcb00ca set d, 1, (ix + 0)
+ddcb00cb set e, 1, (ix + 0)
+ddcb00cc set h, 1, (ix + 0)
+ddcb00cd set l, 1, (ix + 0)
+ddcb00ce set 1, (ix + 0)
+ddcb00cf set a, 1, (ix + 0)
+ddcb00d0 set b, 2, (ix + 0)
+ddcb00d1 set c, 2, (ix + 0)
+ddcb00d2 set d, 2, (ix + 0)
+ddcb00d3 set e, 2, (ix + 0)
+ddcb00d4 set h, 2, (ix + 0)
+ddcb00d5 set l, 2, (ix + 0)
+ddcb00d6 set 2, (ix + 0)
+ddcb00d7 set a, 2, (ix + 0)
+ddcb00d8 set b, 3, (ix + 0)
+ddcb00d9 set c, 3, (ix + 0)
+ddcb00da set d, 3, (ix + 0)
+ddcb00db set e, 3, (ix + 0)
+ddcb00dc set h, 3, (ix + 0)
+ddcb00dd set l, 3, (ix + 0)
+ddcb00de set 3, (ix + 0)
+ddcb00df set a, 3, (ix + 0)
+ddcb00e0 set b, 4, (ix + 0)
+ddcb00e1 set c, 4, (ix + 0)
+ddcb00e2 set d, 4, (ix + 0)
+ddcb00e3 set e, 4, (ix + 0)
+ddcb00e4 set h, 4, (ix + 0)
+ddcb00e5 set l, 4, (ix + 0)
+ddcb00e6 set 4, (ix + 0)
+ddcb00e7 set a, 4, (ix + 0)
+ddcb00e8 set b, 5, (ix + 0)
+ddcb00e9 set c, 5, (ix + 0)
+ddcb00ea set d, 5, (ix + 0)
+ddcb00eb set e, 5, (ix + 0)
+ddcb00ec set h, 5, (ix + 0)
+ddcb00ed set l, 5, (ix + 0)
+ddcb00ee set 5, (ix + 0)
+ddcb00ef set a, 5, (ix + 0)
+ddcb00f0 set b, 6, (ix + 0)
+ddcb00f1 set c, 6, (ix + 0)
+ddcb00f2 set d, 6, (ix + 0)
+ddcb00f3 set e, 6, (ix + 0)
+ddcb00f4 set h, 6, (ix + 0)
+ddcb00f5 set l, 6, (ix + 0)
+ddcb00f6 set 6, (ix + 0)
+ddcb00f7 set a, 6, (ix + 0)
+ddcb00f8 set b, 7, (ix + 0)
+ddcb00f9 set c, 7, (ix + 0)
+ddcb00fa set d, 7, (ix + 0)
+ddcb00fb set e, 7, (ix + 0)
+ddcb00fc set h, 7, (ix + 0)
+ddcb00fd set l, 7, (ix + 0)
+ddcb00fe set 7, (ix + 0)
+ddcb00ff set a, 7, (ix + 0)
+
+ddcc0000 (db 0xdd), call z, 0x0000
+ddcd0000 (db 0xdd), call 0x0000
+ddce00 (db 0xdd), adc a, 0x00
+ddcf (db 0xdd), rst 0x0008
+ddd0 (db 0xdd), ret nc
+ddd1 (db 0xdd), pop de
+ddd20000 (db 0xdd), jp nc, 0x0000
+ddd300 (db 0xdd), out (0x00), a
+ddd40000 (db 0xdd), call nc, 0x0000
+ddd5 (db 0xdd), push de
+ddd600 (db 0xdd), sub 0x00
+ddd7 (db 0xdd), rst 0x0010
+ddd8 (db 0xdd), ret c
+ddd9 (db 0xdd), exx
+ddda0000 (db 0xdd), jp c, 0x0000
+dddb00 (db 0xdd), in a, (0x00)
+dddc0000 (db 0xdd), call c, 0x0000
+
+# dddd
+
+ddde00 (db 0xdd), sbc a, 0x00
+dddf (db 0xdd), rst 0x0018
+dde0 (db 0xdd), ret po
+dde1 pop ix
+dde20000 (db 0xdd), jp po, 0x0000
+dde3 ex (sp), ix
+dde40000 (db 0xdd), call po, 0x0000
+dde5 push ix
+dde600 (db 0xdd), and 0x00
+dde7 (db 0xdd), rst 0x0020
+dde8 (db 0xdd), ret pe
+dde9 jp (ix)
+ddea0000 (db 0xdd), jp pe, 0x0000
+ddeb (db 0xdd), ex de, hl
+ddec0000 (db 0xdd), call pe, 0x0000
+
+dded00 (db 0xdd), xnop 0xed00
+dded01 (db 0xdd), xnop 0xed01
+dded02 (db 0xdd), xnop 0xed02
+dded03 (db 0xdd), xnop 0xed03
+dded04 (db 0xdd), xnop 0xed04
+dded05 (db 0xdd), xnop 0xed05
+dded06 (db 0xdd), xnop 0xed06
+dded07 (db 0xdd), xnop 0xed07
+dded08 (db 0xdd), xnop 0xed08
+dded09 (db 0xdd), xnop 0xed09
+dded0a (db 0xdd), xnop 0xed0a
+dded0b (db 0xdd), xnop 0xed0b
+dded0c (db 0xdd), xnop 0xed0c
+dded0d (db 0xdd), xnop 0xed0d
+dded0e (db 0xdd), xnop 0xed0e
+dded0f (db 0xdd), xnop 0xed0f
+dded10 (db 0xdd), xnop 0xed10
+dded11 (db 0xdd), xnop 0xed11
+dded12 (db 0xdd), xnop 0xed12
+dded13 (db 0xdd), xnop 0xed13
+dded14 (db 0xdd), xnop 0xed14
+dded15 (db 0xdd), xnop 0xed15
+dded16 (db 0xdd), xnop 0xed16
+dded17 (db 0xdd), xnop 0xed17
+dded18 (db 0xdd), xnop 0xed18
+dded19 (db 0xdd), xnop 0xed19
+dded1a (db 0xdd), xnop 0xed1a
+dded1b (db 0xdd), xnop 0xed1b
+dded1c (db 0xdd), xnop 0xed1c
+dded1d (db 0xdd), xnop 0xed1d
+dded1e (db 0xdd), xnop 0xed1e
+dded1f (db 0xdd), xnop 0xed1f
+dded20 (db 0xdd), xnop 0xed20
+dded21 (db 0xdd), xnop 0xed21
+dded22 (db 0xdd), xnop 0xed22
+dded23 (db 0xdd), xnop 0xed23
+dded24 (db 0xdd), xnop 0xed24
+dded25 (db 0xdd), xnop 0xed25
+dded26 (db 0xdd), xnop 0xed26
+dded27 (db 0xdd), xnop 0xed27
+dded28 (db 0xdd), xnop 0xed28
+dded29 (db 0xdd), xnop 0xed29
+dded2a (db 0xdd), xnop 0xed2a
+dded2b (db 0xdd), xnop 0xed2b
+dded2c (db 0xdd), xnop 0xed2c
+dded2d (db 0xdd), xnop 0xed2d
+dded2e (db 0xdd), xnop 0xed2e
+dded2f (db 0xdd), xnop 0xed2f
+dded30 (db 0xdd), xnop 0xed30
+dded31 (db 0xdd), xnop 0xed31
+dded32 (db 0xdd), xnop 0xed32
+dded33 (db 0xdd), xnop 0xed33
+dded34 (db 0xdd), xnop 0xed34
+dded35 (db 0xdd), xnop 0xed35
+dded36 (db 0xdd), xnop 0xed36
+dded37 (db 0xdd), xnop 0xed37
+dded38 (db 0xdd), xnop 0xed38
+dded39 (db 0xdd), xnop 0xed39
+dded3a (db 0xdd), xnop 0xed3a
+dded3b (db 0xdd), xnop 0xed3b
+dded3c (db 0xdd), xnop 0xed3c
+dded3d (db 0xdd), xnop 0xed3d
+dded3e (db 0xdd), xnop 0xed3e
+dded3f (db 0xdd), xnop 0xed3f
+dded40 (db 0xdd), in b, (c)
+dded41 (db 0xdd), out (c), b
+dded42 (db 0xdd), sbc hl, bc
+dded430000 (db 0xdd), ld (0x0000), bc
+dded44 (db 0xdd), neg
+dded45 (db 0xdd), retn
+dded46 (db 0xdd), im 0
+dded47 (db 0xdd), ld i, a
+dded48 (db 0xdd), in c, (c)
+dded49 (db 0xdd), out (c), c
+dded4a (db 0xdd), adc hl, bc
+dded4b0000 (db 0xdd), ld bc, (0x0000)
+dded4c (db 0xdd), xneg 0xed4c
+dded4d (db 0xdd), reti
+dded4e (db 0xdd), xim 0xed4e, 0
+dded4f (db 0xdd), ld r, a
+dded50 (db 0xdd), in d, (c)
+dded51 (db 0xdd), out (c), d
+dded52 (db 0xdd), sbc hl, de
+dded530000 (db 0xdd), ld (0x0000), de
+dded54 (db 0xdd), xneg 0xed54
+dded55 (db 0xdd), xretn 0xed55
+dded56 (db 0xdd), im 1
+dded57 (db 0xdd), ld a, i
+dded58 (db 0xdd), in e, (c)
+dded59 (db 0xdd), out (c), e
+dded5a (db 0xdd), adc hl, de
+dded5b0000 (db 0xdd), ld de, (0x0000)
+dded5c (db 0xdd), xneg 0xed5c
+dded5d (db 0xdd), xretn 0xed5d
+dded5e (db 0xdd), im 2
+dded5f (db 0xdd), ld a, r
+dded60 (db 0xdd), in h, (c)
+dded61 (db 0xdd), out (c), h
+dded62 (db 0xdd), sbc hl, hl
+dded630000 (db 0xdd), xld 0xed63, (0x0000), hl
+dded64 (db 0xdd), xneg 0xed64
+dded65 (db 0xdd), xretn 0xed65
+dded66 (db 0xdd), xim 0xed66, 0
+dded67 (db 0xdd), rrd
+dded68 (db 0xdd), in l, (c)
+dded69 (db 0xdd), out (c), l
+dded6a (db 0xdd), adc hl, hl
+dded6b0000 (db 0xdd), xld 0xed6b, hl, (0x0000)
+dded6c (db 0xdd), xneg 0xed6c
+dded6d (db 0xdd), xretn 0xed6d
+dded6e (db 0xdd), xim 0xed6e, 0
+dded6f (db 0xdd), rld
+dded70 (db 0xdd), in (c)
+dded71 (db 0xdd), out (c), 0x00
+dded72 (db 0xdd), sbc hl, sp
+dded730000 (db 0xdd), ld (0x0000), sp
+dded74 (db 0xdd), xneg 0xed74
+dded75 (db 0xdd), xretn 0xed75
+dded76 (db 0xdd), xim 0xed76, 1
+dded77 (db 0xdd), xnop 0xed77
+dded78 (db 0xdd), in a, (c)
+dded79 (db 0xdd), out (c), a
+dded7a (db 0xdd), adc hl, sp
+dded7b0000 (db 0xdd), ld sp, (0x0000)
+dded7c (db 0xdd), xneg 0xed7c
+dded7d (db 0xdd), xretn 0xed7d
+dded7e (db 0xdd), xim 0xed7e, 2
+dded7f (db 0xdd), xnop 0xed7f
+dded80 (db 0xdd), xnop 0xed80
+dded81 (db 0xdd), xnop 0xed81
+dded82 (db 0xdd), xnop 0xed82
+dded83 (db 0xdd), xnop 0xed83
+dded84 (db 0xdd), xnop 0xed84
+dded85 (db 0xdd), xnop 0xed85
+dded86 (db 0xdd), xnop 0xed86
+dded87 (db 0xdd), xnop 0xed87
+dded88 (db 0xdd), xnop 0xed88
+dded89 (db 0xdd), xnop 0xed89
+dded8a (db 0xdd), xnop 0xed8a
+dded8b (db 0xdd), xnop 0xed8b
+dded8c (db 0xdd), xnop 0xed8c
+dded8d (db 0xdd), xnop 0xed8d
+dded8e (db 0xdd), xnop 0xed8e
+dded8f (db 0xdd), xnop 0xed8f
+dded90 (db 0xdd), xnop 0xed90
+dded91 (db 0xdd), xnop 0xed91
+dded92 (db 0xdd), xnop 0xed92
+dded93 (db 0xdd), xnop 0xed93
+dded94 (db 0xdd), xnop 0xed94
+dded95 (db 0xdd), xnop 0xed95
+dded96 (db 0xdd), xnop 0xed96
+dded97 (db 0xdd), xnop 0xed97
+dded98 (db 0xdd), xnop 0xed98
+dded99 (db 0xdd), xnop 0xed99
+dded9a (db 0xdd), xnop 0xed9a
+dded9b (db 0xdd), xnop 0xed9b
+dded9c (db 0xdd), xnop 0xed9c
+dded9d (db 0xdd), xnop 0xed9d
+dded9e (db 0xdd), xnop 0xed9e
+dded9f (db 0xdd), xnop 0xed9f
+ddeda0 (db 0xdd), ldi
+ddeda1 (db 0xdd), cpi
+ddeda2 (db 0xdd), ini
+ddeda3 (db 0xdd), outi
+ddeda4 (db 0xdd), xnop 0xeda4
+ddeda5 (db 0xdd), xnop 0xeda5
+ddeda6 (db 0xdd), xnop 0xeda6
+ddeda7 (db 0xdd), xnop 0xeda7
+ddeda8 (db 0xdd), ldd
+ddeda9 (db 0xdd), cpd
+ddedaa (db 0xdd), ind
+ddedab (db 0xdd), outd
+ddedac (db 0xdd), xnop 0xedac
+ddedad (db 0xdd), xnop 0xedad
+ddedae (db 0xdd), xnop 0xedae
+ddedaf (db 0xdd), xnop 0xedaf
+ddedb0 (db 0xdd), ldir
+ddedb1 (db 0xdd), cpir
+ddedb2 (db 0xdd), inir
+ddedb3 (db 0xdd), otir
+ddedb4 (db 0xdd), xnop 0xedb4
+ddedb5 (db 0xdd), xnop 0xedb5
+ddedb6 (db 0xdd), xnop 0xedb6
+ddedb7 (db 0xdd), xnop 0xedb7
+ddedb8 (db 0xdd), lddr
+ddedb9 (db 0xdd), cpdr
+ddedba (db 0xdd), indr
+ddedbb (db 0xdd), otdr
+ddedbc (db 0xdd), xnop 0xedbc
+ddedbd (db 0xdd), xnop 0xedbd
+ddedbe (db 0xdd), xnop 0xedbe
+ddedbf (db 0xdd), xnop 0xedbf
+ddedc0 (db 0xdd), xnop 0xedc0
+ddedc1 (db 0xdd), xnop 0xedc1
+ddedc2 (db 0xdd), xnop 0xedc2
+ddedc3 (db 0xdd), xnop 0xedc3
+ddedc4 (db 0xdd), xnop 0xedc4
+ddedc5 (db 0xdd), xnop 0xedc5
+ddedc6 (db 0xdd), xnop 0xedc6
+ddedc7 (db 0xdd), xnop 0xedc7
+ddedc8 (db 0xdd), xnop 0xedc8
+ddedc9 (db 0xdd), xnop 0xedc9
+ddedca (db 0xdd), xnop 0xedca
+ddedcb (db 0xdd), xnop 0xedcb
+ddedcc (db 0xdd), xnop 0xedcc
+ddedcd (db 0xdd), xnop 0xedcd
+ddedce (db 0xdd), xnop 0xedce
+ddedcf (db 0xdd), xnop 0xedcf
+ddedd0 (db 0xdd), xnop 0xedd0
+ddedd1 (db 0xdd), xnop 0xedd1
+ddedd2 (db 0xdd), xnop 0xedd2
+ddedd3 (db 0xdd), xnop 0xedd3
+ddedd4 (db 0xdd), xnop 0xedd4
+ddedd5 (db 0xdd), xnop 0xedd5
+ddedd6 (db 0xdd), xnop 0xedd6
+ddedd7 (db 0xdd), xnop 0xedd7
+ddedd8 (db 0xdd), xnop 0xedd8
+ddedd9 (db 0xdd), xnop 0xedd9
+ddedda (db 0xdd), xnop 0xedda
+ddeddb (db 0xdd), xnop 0xeddb
+ddeddc (db 0xdd), xnop 0xeddc
+ddeddd (db 0xdd), xnop 0xeddd
+ddedde (db 0xdd), xnop 0xedde
+ddeddf (db 0xdd), xnop 0xeddf
+ddede0 (db 0xdd), xnop 0xede0
+ddede1 (db 0xdd), xnop 0xede1
+ddede2 (db 0xdd), xnop 0xede2
+ddede3 (db 0xdd), xnop 0xede3
+ddede4 (db 0xdd), xnop 0xede4
+ddede5 (db 0xdd), xnop 0xede5
+ddede6 (db 0xdd), xnop 0xede6
+ddede7 (db 0xdd), xnop 0xede7
+ddede8 (db 0xdd), xnop 0xede8
+ddede9 (db 0xdd), xnop 0xede9
+ddedea (db 0xdd), xnop 0xedea
+ddedeb (db 0xdd), xnop 0xedeb
+ddedec (db 0xdd), xnop 0xedec
+ddeded (db 0xdd), xnop 0xeded
+ddedee (db 0xdd), xnop 0xedee
+ddedef (db 0xdd), xnop 0xedef
+ddedf0 (db 0xdd), xnop 0xedf0
+ddedf1 (db 0xdd), xnop 0xedf1
+ddedf2 (db 0xdd), xnop 0xedf2
+ddedf3 (db 0xdd), xnop 0xedf3
+ddedf4 (db 0xdd), xnop 0xedf4
+ddedf5 (db 0xdd), xnop 0xedf5
+ddedf6 (db 0xdd), xnop 0xedf6
+ddedf7 (db 0xdd), xnop 0xedf7
+ddedf8 (db 0xdd), xnop 0xedf8
+ddedf9 (db 0xdd), xnop 0xedf9
+ddedfa (db 0xdd), xnop 0xedfa
+ddedfb (db 0xdd), xnop 0xedfb
+ddedfc (db 0xdd), xnop 0xedfc
+ddedfd (db 0xdd), xnop 0xedfd
+ddedfe (db 0xdd), xnop 0xedfe
+ddedff (db 0xdd), xnop 0xedff
+
+ddee00 (db 0xdd), xor 0x00
+ddef (db 0xdd), rst 0x0028
+ddf0 (db 0xdd), ret p
+ddf1 (db 0xdd), pop af
+ddf20000 (db 0xdd), jp p, 0x0000
+ddf3 (db 0xdd), di
+ddf40000 (db 0xdd), call p, 0x0000
+ddf5 (db 0xdd), push af
+ddf600 (db 0xdd), or 0x00
+ddf7 (db 0xdd), rst 0x0030
+ddf8 (db 0xdd), ret m
+ddf9 ld sp, ix
+ddfa0000 (db 0xdd), jp m, 0x0000
+ddfb (db 0xdd), ei
+ddfc0000 (db 0xdd), call m, 0x0000
+
+# ddfd
+
+ddfe00 (db 0xdd), cp 0x00
+ddff (db 0xdd), rst 0x0038
+
+de00 sbc a, 0x00
+df rst 0x0018
+e0 ret po
+e1 pop hl
+e20000 jp po, 0x0000
+e3 ex (sp), hl
+e40000 call po, 0x0000
+e5 push hl
+e600 and 0x00
+e7 rst 0x0020
+e8 ret pe
+e9 jp (hl)
+ea0000 jp pe, 0x0000
+eb ex de, hl
+ec0000 call pe, 0x0000
+
+ed00 xnop 0xed00
+ed01 xnop 0xed01
+ed02 xnop 0xed02
+ed03 xnop 0xed03
+ed04 xnop 0xed04
+ed05 xnop 0xed05
+ed06 xnop 0xed06
+ed07 xnop 0xed07
+ed08 xnop 0xed08
+ed09 xnop 0xed09
+ed0a xnop 0xed0a
+ed0b xnop 0xed0b
+ed0c xnop 0xed0c
+ed0d xnop 0xed0d
+ed0e xnop 0xed0e
+ed0f xnop 0xed0f
+ed10 xnop 0xed10
+ed11 xnop 0xed11
+ed12 xnop 0xed12
+ed13 xnop 0xed13
+ed14 xnop 0xed14
+ed15 xnop 0xed15
+ed16 xnop 0xed16
+ed17 xnop 0xed17
+ed18 xnop 0xed18
+ed19 xnop 0xed19
+ed1a xnop 0xed1a
+ed1b xnop 0xed1b
+ed1c xnop 0xed1c
+ed1d xnop 0xed1d
+ed1e xnop 0xed1e
+ed1f xnop 0xed1f
+ed20 xnop 0xed20
+ed21 xnop 0xed21
+ed22 xnop 0xed22
+ed23 xnop 0xed23
+ed24 xnop 0xed24
+ed25 xnop 0xed25
+ed26 xnop 0xed26
+ed27 xnop 0xed27
+ed28 xnop 0xed28
+ed29 xnop 0xed29
+ed2a xnop 0xed2a
+ed2b xnop 0xed2b
+ed2c xnop 0xed2c
+ed2d xnop 0xed2d
+ed2e xnop 0xed2e
+ed2f xnop 0xed2f
+ed30 xnop 0xed30
+ed31 xnop 0xed31
+ed32 xnop 0xed32
+ed33 xnop 0xed33
+ed34 xnop 0xed34
+ed35 xnop 0xed35
+ed36 xnop 0xed36
+ed37 xnop 0xed37
+ed38 xnop 0xed38
+ed39 xnop 0xed39
+ed3a xnop 0xed3a
+ed3b xnop 0xed3b
+ed3c xnop 0xed3c
+ed3d xnop 0xed3d
+ed3e xnop 0xed3e
+ed3f xnop 0xed3f
+ed40 in b, (c)
+ed41 out (c), b
+ed42 sbc hl, bc
+ed430000 ld (0x0000), bc
+ed44 neg
+ed45 retn
+ed46 im 0
+ed47 ld i, a
+ed48 in c, (c)
+ed49 out (c), c
+ed4a adc hl, bc
+ed4b0000 ld bc, (0x0000)
+ed4c xneg 0xed4c
+ed4d reti
+ed4e xim 0xed4e, 0
+ed4f ld r, a
+ed50 in d, (c)
+ed51 out (c), d
+ed52 sbc hl, de
+ed530000 ld (0x0000), de
+ed54 xneg 0xed54
+ed55 xretn 0xed55
+ed56 im 1
+ed57 ld a, i
+ed58 in e, (c)
+ed59 out (c), e
+ed5a adc hl, de
+ed5b0000 ld de, (0x0000)
+ed5c xneg 0xed5c
+ed5d xretn 0xed5d
+ed5e im 2
+ed5f ld a, r
+ed60 in h, (c)
+ed61 out (c), h
+ed62 sbc hl, hl
+ed630000 xld 0xed63, (0x0000), hl
+ed64 xneg 0xed64
+ed65 xretn 0xed65
+ed66 xim 0xed66, 0
+ed67 rrd
+ed68 in l, (c)
+ed69 out (c), l
+ed6a adc hl, hl
+ed6b0000 xld 0xed6b, hl, (0x0000)
+ed6c xneg 0xed6c
+ed6d xretn 0xed6d
+ed6e xim 0xed6e, 0
+ed6f rld
+ed70 in (c)
+ed71 out (c), 0x00
+ed72 sbc hl, sp
+ed730000 ld (0x0000), sp
+ed74 xneg 0xed74
+ed75 xretn 0xed75
+ed76 xim 0xed76, 1
+ed77 xnop 0xed77
+ed78 in a, (c)
+ed79 out (c), a
+ed7a adc hl, sp
+ed7b0000 ld sp, (0x0000)
+ed7c xneg 0xed7c
+ed7d xretn 0xed7d
+ed7e xim 0xed7e, 2
+ed7f xnop 0xed7f
+ed80 xnop 0xed80
+ed81 xnop 0xed81
+ed82 xnop 0xed82
+ed83 xnop 0xed83
+ed84 xnop 0xed84
+ed85 xnop 0xed85
+ed86 xnop 0xed86
+ed87 xnop 0xed87
+ed88 xnop 0xed88
+ed89 xnop 0xed89
+ed8a xnop 0xed8a
+ed8b xnop 0xed8b
+ed8c xnop 0xed8c
+ed8d xnop 0xed8d
+ed8e xnop 0xed8e
+ed8f xnop 0xed8f
+ed90 xnop 0xed90
+ed91 xnop 0xed91
+ed92 xnop 0xed92
+ed93 xnop 0xed93
+ed94 xnop 0xed94
+ed95 xnop 0xed95
+ed96 xnop 0xed96
+ed97 xnop 0xed97
+ed98 xnop 0xed98
+ed99 xnop 0xed99
+ed9a xnop 0xed9a
+ed9b xnop 0xed9b
+ed9c xnop 0xed9c
+ed9d xnop 0xed9d
+ed9e xnop 0xed9e
+ed9f xnop 0xed9f
+eda0 ldi
+eda1 cpi
+eda2 ini
+eda3 outi
+eda4 xnop 0xeda4
+eda5 xnop 0xeda5
+eda6 xnop 0xeda6
+eda7 xnop 0xeda7
+eda8 ldd
+eda9 cpd
+edaa ind
+edab outd
+edac xnop 0xedac
+edad xnop 0xedad
+edae xnop 0xedae
+edaf xnop 0xedaf
+edb0 ldir
+edb1 cpir
+edb2 inir
+edb3 otir
+edb4 xnop 0xedb4
+edb5 xnop 0xedb5
+edb6 xnop 0xedb6
+edb7 xnop 0xedb7
+edb8 lddr
+edb9 cpdr
+edba indr
+edbb otdr
+edbc xnop 0xedbc
+edbd xnop 0xedbd
+edbe xnop 0xedbe
+edbf xnop 0xedbf
+edc0 xnop 0xedc0
+edc1 xnop 0xedc1
+edc2 xnop 0xedc2
+edc3 xnop 0xedc3
+edc4 xnop 0xedc4
+edc5 xnop 0xedc5
+edc6 xnop 0xedc6
+edc7 xnop 0xedc7
+edc8 xnop 0xedc8
+edc9 xnop 0xedc9
+edca xnop 0xedca
+edcb xnop 0xedcb
+edcc xnop 0xedcc
+edcd xnop 0xedcd
+edce xnop 0xedce
+edcf xnop 0xedcf
+edd0 xnop 0xedd0
+edd1 xnop 0xedd1
+edd2 xnop 0xedd2
+edd3 xnop 0xedd3
+edd4 xnop 0xedd4
+edd5 xnop 0xedd5
+edd6 xnop 0xedd6
+edd7 xnop 0xedd7
+edd8 xnop 0xedd8
+edd9 xnop 0xedd9
+edda xnop 0xedda
+eddb xnop 0xeddb
+eddc xnop 0xeddc
+eddd xnop 0xeddd
+edde xnop 0xedde
+eddf xnop 0xeddf
+ede0 xnop 0xede0
+ede1 xnop 0xede1
+ede2 xnop 0xede2
+ede3 xnop 0xede3
+ede4 xnop 0xede4
+ede5 xnop 0xede5
+ede6 xnop 0xede6
+ede7 xnop 0xede7
+ede8 xnop 0xede8
+ede9 xnop 0xede9
+edea xnop 0xedea
+edeb xnop 0xedeb
+edec xnop 0xedec
+eded xnop 0xeded
+edee xnop 0xedee
+edef xnop 0xedef
+edf0 xnop 0xedf0
+edf1 xnop 0xedf1
+edf2 xnop 0xedf2
+edf3 xnop 0xedf3
+edf4 xnop 0xedf4
+edf5 xnop 0xedf5
+edf6 xnop 0xedf6
+edf7 xnop 0xedf7
+edf8 xnop 0xedf8
+edf9 xnop 0xedf9
+edfa xnop 0xedfa
+edfb xnop 0xedfb
+edfc xnop 0xedfc
+edfd xnop 0xedfd
+edfe xnop 0xedfe
+edff xnop 0xedff
+
+ee00 xor 0x00
+ef rst 0x0028
+f0 ret p
+f1 pop af
+f20000 jp p, 0x0000
+f3 di
+f40000 call p, 0x0000
+f5 push af
+f600 or 0x00
+f7 rst 0x0030
+f8 ret m
+f9 ld sp, hl
+fa0000 jp m, 0x0000
+fb ei
+fc0000 call m, 0x0000
+
+fd00 (db 0xfd), nop
+fd010000 (db 0xfd), ld bc, 0x0000
+fd02 (db 0xfd), ld (bc), a
+fd03 (db 0xfd), inc bc
+fd04 (db 0xfd), inc b
+fd05 (db 0xfd), dec b
+fd0600 (db 0xfd), ld b, 0x00
+fd07 (db 0xfd), rlca
+fd08 (db 0xfd), ex af, af'
+fd09 add iy, bc
+fd0a (db 0xfd), ld a, (bc)
+fd0b (db 0xfd), dec bc
+fd0c (db 0xfd), inc c
+fd0d (db 0xfd), dec c
+fd0e00 (db 0xfd), ld c, 0x00
+fd0f (db 0xfd), rrca
+fd1000 (db 0xfd), djnz $ + 2
+fd110000 (db 0xfd), ld de, 0x0000
+fd12 (db 0xfd), ld (de), a
+fd13 (db 0xfd), inc de
+fd14 (db 0xfd), inc d
+fd15 (db 0xfd), dec d
+fd1600 (db 0xfd), ld d, 0x00
+fd17 (db 0xfd), rla
+fd1800 (db 0xfd), jr $ + 2
+fd19 add iy, de
+fd1a (db 0xfd), ld a, (de)
+fd1b (db 0xfd), dec de
+fd1c (db 0xfd), inc e
+fd1d (db 0xfd), dec e
+fd1e00 (db 0xfd), ld e, 0x00
+fd1f (db 0xfd), rra
+fd2000 (db 0xfd), jr nz, $ + 2
+fd210000 ld iy, 0x0000
+fd220000 ld (0x0000), iy
+fd23 inc iy
+fd24 inc iyh
+fd25 dec iyh
+fd2600 ld iyh, 0x00
+fd27 (db 0xfd), daa
+fd2800 (db 0xfd), jr z, $ + 2
+fd29 add iy, iy
+fd2a0000 ld iy, (0x0000)
+fd2b dec iy
+fd2c inc iyl
+fd2d dec iyl
+fd2e00 ld iyl, 0x00
+fd2f (db 0xfd), cpl
+fd3000 (db 0xfd), jr nc, $ + 2
+fd310000 (db 0xfd), ld sp, 0x0000
+fd320000 (db 0xfd), ld (0x0000), a
+fd33 (db 0xfd), inc sp
+fd3400 inc (iy + 0)
+fd3500 dec (iy + 0)
+fd360000 ld (iy + 0), 0x00
+fd37 (db 0xfd), scf
+fd3800 (db 0xfd), jr c, $ + 2
+fd39 add iy, sp
+fd3a0000 (db 0xfd), ld a, (0x0000)
+fd3b (db 0xfd), dec sp
+fd3c (db 0xfd), inc a
+fd3d (db 0xfd), dec a
+fd3e00 (db 0xfd), ld a, 0x00
+fd3f (db 0xfd), ccf
+fd40 (db 0xfd), ld b, b
+fd41 (db 0xfd), ld b, c
+fd42 (db 0xfd), ld b, d
+fd43 (db 0xfd), ld b, e
+fd44 ld b, iyh
+fd45 ld b, iyl
+fd4600 ld b, (iy + 0)
+fd47 (db 0xfd), ld b, a
+fd48 (db 0xfd), ld c, b
+fd49 (db 0xfd), ld c, c
+fd4a (db 0xfd), ld c, d
+fd4b (db 0xfd), ld c, e
+fd4c ld c, iyh
+fd4d ld c, iyl
+fd4e00 ld c, (iy + 0)
+fd4f (db 0xfd), ld c, a
+fd50 (db 0xfd), ld d, b
+fd51 (db 0xfd), ld d, c
+fd52 (db 0xfd), ld d, d
+fd53 (db 0xfd), ld d, e
+fd54 ld d, iyh
+fd55 ld d, iyl
+fd5600 ld d, (iy + 0)
+fd57 (db 0xfd), ld d, a
+fd58 (db 0xfd), ld e, b
+fd59 (db 0xfd), ld e, c
+fd5a (db 0xfd), ld e, d
+fd5b (db 0xfd), ld e, e
+fd5c ld e, iyh
+fd5d ld e, iyl
+fd5e00 ld e, (iy + 0)
+fd5f (db 0xfd), ld e, a
+fd60 ld iyh, b
+fd61 ld iyh, c
+fd62 ld iyh, d
+fd63 ld iyh, e
+fd64 ld iyh, iyh
+fd65 ld iyh, iyl
+fd6600 ld h, (iy + 0)
+fd67 ld iyh, a
+fd68 ld iyl, b
+fd69 ld iyl, c
+fd6a ld iyl, d
+fd6b ld iyl, e
+fd6c ld iyl, iyh
+fd6d ld iyl, iyl
+fd6e00 ld l, (iy + 0)
+fd6f ld iyl, a
+fd7000 ld (iy + 0), b
+fd7100 ld (iy + 0), c
+fd7200 ld (iy + 0), d
+fd7300 ld (iy + 0), e
+fd7400 ld (iy + 0), h
+fd7500 ld (iy + 0), l
+fd76 (db 0xfd), halt
+fd7700 ld (iy + 0), a
+fd78 (db 0xfd), ld a, b
+fd79 (db 0xfd), ld a, c
+fd7a (db 0xfd), ld a, d
+fd7b (db 0xfd), ld a, e
+fd7c ld a, iyh
+fd7d ld a, iyl
+fd7e00 ld a, (iy + 0)
+fd7f (db 0xfd), ld a, a
+fd80 (db 0xfd), add a, b
+fd81 (db 0xfd), add a, c
+fd82 (db 0xfd), add a, d
+fd83 (db 0xfd), add a, e
+fd84 add a, iyh
+fd85 add a, iyl
+fd8600 add a, (iy + 0)
+fd87 (db 0xfd), add a, a
+fd88 (db 0xfd), adc a, b
+fd89 (db 0xfd), adc a, c
+fd8a (db 0xfd), adc a, d
+fd8b (db 0xfd), adc a, e
+fd8c adc a, iyh
+fd8d adc a, iyl
+fd8e00 adc a, (iy + 0)
+fd8f (db 0xfd), adc a, a
+fd90 (db 0xfd), sub b
+fd91 (db 0xfd), sub c
+fd92 (db 0xfd), sub d
+fd93 (db 0xfd), sub e
+fd94 sub iyh
+fd95 sub iyl
+fd9600 sub (iy + 0)
+fd97 (db 0xfd), sub a
+fd98 (db 0xfd), sbc a, b
+fd99 (db 0xfd), sbc a, c
+fd9a (db 0xfd), sbc a, d
+fd9b (db 0xfd), sbc a, e
+fd9c sbc a, iyh
+fd9d sbc a, iyl
+fd9e00 sbc a, (iy + 0)
+fd9f (db 0xfd), sbc a, a
+fda0 (db 0xfd), and b
+fda1 (db 0xfd), and c
+fda2 (db 0xfd), and d
+fda3 (db 0xfd), and e
+fda4 and iyh
+fda5 and iyl
+fda600 and (iy + 0)
+fda7 (db 0xfd), and a
+fda8 (db 0xfd), xor b
+fda9 (db 0xfd), xor c
+fdaa (db 0xfd), xor d
+fdab (db 0xfd), xor e
+fdac xor iyh
+fdad xor iyl
+fdae00 xor (iy + 0)
+fdaf (db 0xfd), xor a
+fdb0 (db 0xfd), or b
+fdb1 (db 0xfd), or c
+fdb2 (db 0xfd), or d
+fdb3 (db 0xfd), or e
+fdb4 or iyh
+fdb5 or iyl
+fdb600 or (iy + 0)
+fdb7 (db 0xfd), or a
+fdb8 (db 0xfd), cp b
+fdb9 (db 0xfd), cp c
+fdba (db 0xfd), cp d
+fdbb (db 0xfd), cp e
+fdbc cp iyh
+fdbd cp iyl
+fdbe00 cp (iy + 0)
+fdbf (db 0xfd), cp a
+fdc0 (db 0xfd), ret nz
+fdc1 (db 0xfd), pop bc
+fdc20000 (db 0xfd), jp nz, 0x0000
+fdc30000 (db 0xfd), jp 0x0000
+fdc40000 (db 0xfd), call nz, 0x0000
+fdc5 (db 0xfd), push bc
+fdc600 (db 0xfd), add a, 0x00
+fdc7 (db 0xfd), rst 0x0000
+fdc8 (db 0xfd), ret z
+fdc9 (db 0xfd), ret
+fdca0000 (db 0xfd), jp z, 0x0000
+
+fdcb0000 rlc (iy + 0), b
+fdcb0001 rlc (iy + 0), c
+fdcb0002 rlc (iy + 0), d
+fdcb0003 rlc (iy + 0), e
+fdcb0004 rlc (iy + 0), h
+fdcb0005 rlc (iy + 0), l
+fdcb0006 rlc (iy + 0)
+fdcb0007 rlc (iy + 0), a
+fdcb0008 rrc (iy + 0), b
+fdcb0009 rrc (iy + 0), c
+fdcb000a rrc (iy + 0), d
+fdcb000b rrc (iy + 0), e
+fdcb000c rrc (iy + 0), h
+fdcb000d rrc (iy + 0), l
+fdcb000e rrc (iy + 0)
+fdcb000f rrc (iy + 0), a
+fdcb0010 rl (iy + 0), b
+fdcb0011 rl (iy + 0), c
+fdcb0012 rl (iy + 0), d
+fdcb0013 rl (iy + 0), e
+fdcb0014 rl (iy + 0), h
+fdcb0015 rl (iy + 0), l
+fdcb0016 rl (iy + 0)
+fdcb0017 rl (iy + 0), a
+fdcb0018 rr (iy + 0), b
+fdcb0019 rr (iy + 0), c
+fdcb001a rr (iy + 0), d
+fdcb001b rr (iy + 0), e
+fdcb001c rr (iy + 0), h
+fdcb001d rr (iy + 0), l
+fdcb001e rr (iy + 0)
+fdcb001f rr (iy + 0), a
+fdcb0020 sla (iy + 0), b
+fdcb0021 sla (iy + 0), c
+fdcb0022 sla (iy + 0), d
+fdcb0023 sla (iy + 0), e
+fdcb0024 sla (iy + 0), h
+fdcb0025 sla (iy + 0), l
+fdcb0026 sla (iy + 0)
+fdcb0027 sla (iy + 0), a
+fdcb0028 sra (iy + 0), b
+fdcb0029 sra (iy + 0), c
+fdcb002a sra (iy + 0), d
+fdcb002b sra (iy + 0), e
+fdcb002c sra (iy + 0), h
+fdcb002d sra (iy + 0), l
+fdcb002e sra (iy + 0)
+fdcb002f sra (iy + 0), a
+fdcb0030 sll (iy + 0), b
+fdcb0031 sll (iy + 0), c
+fdcb0032 sll (iy + 0), d
+fdcb0033 sll (iy + 0), e
+fdcb0034 sll (iy + 0), h
+fdcb0035 sll (iy + 0), l
+fdcb0036 sll (iy + 0)
+fdcb0037 sll (iy + 0), a
+fdcb0038 srl (iy + 0), b
+fdcb0039 srl (iy + 0), c
+fdcb003a srl (iy + 0), d
+fdcb003b srl (iy + 0), e
+fdcb003c srl (iy + 0), h
+fdcb003d srl (iy + 0), l
+fdcb003e srl (iy + 0)
+fdcb003f srl (iy + 0), a
+fdcb0040 bit b, 0, (iy + 0)
+fdcb0041 bit c, 0, (iy + 0)
+fdcb0042 bit d, 0, (iy + 0)
+fdcb0043 bit e, 0, (iy + 0)
+fdcb0044 bit h, 0, (iy + 0)
+fdcb0045 bit l, 0, (iy + 0)
+fdcb0046 bit 0, (iy + 0)
+fdcb0047 bit a, 0, (iy + 0)
+fdcb0048 bit b, 1, (iy + 0)
+fdcb0049 bit c, 1, (iy + 0)
+fdcb004a bit d, 1, (iy + 0)
+fdcb004b bit e, 1, (iy + 0)
+fdcb004c bit h, 1, (iy + 0)
+fdcb004d bit l, 1, (iy + 0)
+fdcb004e bit 1, (iy + 0)
+fdcb004f bit a, 1, (iy + 0)
+fdcb0050 bit b, 2, (iy + 0)
+fdcb0051 bit c, 2, (iy + 0)
+fdcb0052 bit d, 2, (iy + 0)
+fdcb0053 bit e, 2, (iy + 0)
+fdcb0054 bit h, 2, (iy + 0)
+fdcb0055 bit l, 2, (iy + 0)
+fdcb0056 bit 2, (iy + 0)
+fdcb0057 bit a, 2, (iy + 0)
+fdcb0058 bit b, 3, (iy + 0)
+fdcb0059 bit c, 3, (iy + 0)
+fdcb005a bit d, 3, (iy + 0)
+fdcb005b bit e, 3, (iy + 0)
+fdcb005c bit h, 3, (iy + 0)
+fdcb005d bit l, 3, (iy + 0)
+fdcb005e bit 3, (iy + 0)
+fdcb005f bit a, 3, (iy + 0)
+fdcb0060 bit b, 4, (iy + 0)
+fdcb0061 bit c, 4, (iy + 0)
+fdcb0062 bit d, 4, (iy + 0)
+fdcb0063 bit e, 4, (iy + 0)
+fdcb0064 bit h, 4, (iy + 0)
+fdcb0065 bit l, 4, (iy + 0)
+fdcb0066 bit 4, (iy + 0)
+fdcb0067 bit a, 4, (iy + 0)
+fdcb0068 bit b, 5, (iy + 0)
+fdcb0069 bit c, 5, (iy + 0)
+fdcb006a bit d, 5, (iy + 0)
+fdcb006b bit e, 5, (iy + 0)
+fdcb006c bit h, 5, (iy + 0)
+fdcb006d bit l, 5, (iy + 0)
+fdcb006e bit 5, (iy + 0)
+fdcb006f bit a, 5, (iy + 0)
+fdcb0070 bit b, 6, (iy + 0)
+fdcb0071 bit c, 6, (iy + 0)
+fdcb0072 bit d, 6, (iy + 0)
+fdcb0073 bit e, 6, (iy + 0)
+fdcb0074 bit h, 6, (iy + 0)
+fdcb0075 bit l, 6, (iy + 0)
+fdcb0076 bit 6, (iy + 0)
+fdcb0077 bit a, 6, (iy + 0)
+fdcb0078 bit b, 7, (iy + 0)
+fdcb0079 bit c, 7, (iy + 0)
+fdcb007a bit d, 7, (iy + 0)
+fdcb007b bit e, 7, (iy + 0)
+fdcb007c bit h, 7, (iy + 0)
+fdcb007d bit l, 7, (iy + 0)
+fdcb007e bit 7, (iy + 0)
+fdcb007f bit a, 7, (iy + 0)
+fdcb0080 res b, 0, (iy + 0)
+fdcb0081 res c, 0, (iy + 0)
+fdcb0082 res d, 0, (iy + 0)
+fdcb0083 res e, 0, (iy + 0)
+fdcb0084 res h, 0, (iy + 0)
+fdcb0085 res l, 0, (iy + 0)
+fdcb0086 res 0, (iy + 0)
+fdcb0087 res a, 0, (iy + 0)
+fdcb0088 res b, 1, (iy + 0)
+fdcb0089 res c, 1, (iy + 0)
+fdcb008a res d, 1, (iy + 0)
+fdcb008b res e, 1, (iy + 0)
+fdcb008c res h, 1, (iy + 0)
+fdcb008d res l, 1, (iy + 0)
+fdcb008e res 1, (iy + 0)
+fdcb008f res a, 1, (iy + 0)
+fdcb0090 res b, 2, (iy + 0)
+fdcb0091 res c, 2, (iy + 0)
+fdcb0092 res d, 2, (iy + 0)
+fdcb0093 res e, 2, (iy + 0)
+fdcb0094 res h, 2, (iy + 0)
+fdcb0095 res l, 2, (iy + 0)
+fdcb0096 res 2, (iy + 0)
+fdcb0097 res a, 2, (iy + 0)
+fdcb0098 res b, 3, (iy + 0)
+fdcb0099 res c, 3, (iy + 0)
+fdcb009a res d, 3, (iy + 0)
+fdcb009b res e, 3, (iy + 0)
+fdcb009c res h, 3, (iy + 0)
+fdcb009d res l, 3, (iy + 0)
+fdcb009e res 3, (iy + 0)
+fdcb009f res a, 3, (iy + 0)
+fdcb00a0 res b, 4, (iy + 0)
+fdcb00a1 res c, 4, (iy + 0)
+fdcb00a2 res d, 4, (iy + 0)
+fdcb00a3 res e, 4, (iy + 0)
+fdcb00a4 res h, 4, (iy + 0)
+fdcb00a5 res l, 4, (iy + 0)
+fdcb00a6 res 4, (iy + 0)
+fdcb00a7 res a, 4, (iy + 0)
+fdcb00a8 res b, 5, (iy + 0)
+fdcb00a9 res c, 5, (iy + 0)
+fdcb00aa res d, 5, (iy + 0)
+fdcb00ab res e, 5, (iy + 0)
+fdcb00ac res h, 5, (iy + 0)
+fdcb00ad res l, 5, (iy + 0)
+fdcb00ae res 5, (iy + 0)
+fdcb00af res a, 5, (iy + 0)
+fdcb00b0 res b, 6, (iy + 0)
+fdcb00b1 res c, 6, (iy + 0)
+fdcb00b2 res d, 6, (iy + 0)
+fdcb00b3 res e, 6, (iy + 0)
+fdcb00b4 res h, 6, (iy + 0)
+fdcb00b5 res l, 6, (iy + 0)
+fdcb00b6 res 6, (iy + 0)
+fdcb00b7 res a, 6, (iy + 0)
+fdcb00b8 res b, 7, (iy + 0)
+fdcb00b9 res c, 7, (iy + 0)
+fdcb00ba res d, 7, (iy + 0)
+fdcb00bb res e, 7, (iy + 0)
+fdcb00bc res h, 7, (iy + 0)
+fdcb00bd res l, 7, (iy + 0)
+fdcb00be res 7, (iy + 0)
+fdcb00bf res a, 7, (iy + 0)
+fdcb00c0 set b, 0, (iy + 0)
+fdcb00c1 set c, 0, (iy + 0)
+fdcb00c2 set d, 0, (iy + 0)
+fdcb00c3 set e, 0, (iy + 0)
+fdcb00c4 set h, 0, (iy + 0)
+fdcb00c5 set l, 0, (iy + 0)
+fdcb00c6 set 0, (iy + 0)
+fdcb00c7 set a, 0, (iy + 0)
+fdcb00c8 set b, 1, (iy + 0)
+fdcb00c9 set c, 1, (iy + 0)
+fdcb00ca set d, 1, (iy + 0)
+fdcb00cb set e, 1, (iy + 0)
+fdcb00cc set h, 1, (iy + 0)
+fdcb00cd set l, 1, (iy + 0)
+fdcb00ce set 1, (iy + 0)
+fdcb00cf set a, 1, (iy + 0)
+fdcb00d0 set b, 2, (iy + 0)
+fdcb00d1 set c, 2, (iy + 0)
+fdcb00d2 set d, 2, (iy + 0)
+fdcb00d3 set e, 2, (iy + 0)
+fdcb00d4 set h, 2, (iy + 0)
+fdcb00d5 set l, 2, (iy + 0)
+fdcb00d6 set 2, (iy + 0)
+fdcb00d7 set a, 2, (iy + 0)
+fdcb00d8 set b, 3, (iy + 0)
+fdcb00d9 set c, 3, (iy + 0)
+fdcb00da set d, 3, (iy + 0)
+fdcb00db set e, 3, (iy + 0)
+fdcb00dc set h, 3, (iy + 0)
+fdcb00dd set l, 3, (iy + 0)
+fdcb00de set 3, (iy + 0)
+fdcb00df set a, 3, (iy + 0)
+fdcb00e0 set b, 4, (iy + 0)
+fdcb00e1 set c, 4, (iy + 0)
+fdcb00e2 set d, 4, (iy + 0)
+fdcb00e3 set e, 4, (iy + 0)
+fdcb00e4 set h, 4, (iy + 0)
+fdcb00e5 set l, 4, (iy + 0)
+fdcb00e6 set 4, (iy + 0)
+fdcb00e7 set a, 4, (iy + 0)
+fdcb00e8 set b, 5, (iy + 0)
+fdcb00e9 set c, 5, (iy + 0)
+fdcb00ea set d, 5, (iy + 0)
+fdcb00eb set e, 5, (iy + 0)
+fdcb00ec set h, 5, (iy + 0)
+fdcb00ed set l, 5, (iy + 0)
+fdcb00ee set 5, (iy + 0)
+fdcb00ef set a, 5, (iy + 0)
+fdcb00f0 set b, 6, (iy + 0)
+fdcb00f1 set c, 6, (iy + 0)
+fdcb00f2 set d, 6, (iy + 0)
+fdcb00f3 set e, 6, (iy + 0)
+fdcb00f4 set h, 6, (iy + 0)
+fdcb00f5 set l, 6, (iy + 0)
+fdcb00f6 set 6, (iy + 0)
+fdcb00f7 set a, 6, (iy + 0)
+fdcb00f8 set b, 7, (iy + 0)
+fdcb00f9 set c, 7, (iy + 0)
+fdcb00fa set d, 7, (iy + 0)
+fdcb00fb set e, 7, (iy + 0)
+fdcb00fc set h, 7, (iy + 0)
+fdcb00fd set l, 7, (iy + 0)
+fdcb00fe set 7, (iy + 0)
+fdcb00ff set a, 7, (iy + 0)
+
+fdcc0000 (db 0xfd), call z, 0x0000
+fdcd0000 (db 0xfd), call 0x0000
+fdce00 (db 0xfd), adc a, 0x00
+fdcf (db 0xfd), rst 0x0008
+fdd0 (db 0xfd), ret nc
+fdd1 (db 0xfd), pop de
+fdd20000 (db 0xfd), jp nc, 0x0000
+fdd300 (db 0xfd), out (0x00), a
+fdd40000 (db 0xfd), call nc, 0x0000
+fdd5 (db 0xfd), push de
+fdd600 (db 0xfd), sub 0x00
+fdd7 (db 0xfd), rst 0x0010
+fdd8 (db 0xfd), ret c
+fdd9 (db 0xfd), exx
+fdda0000 (db 0xfd), jp c, 0x0000
+fddb00 (db 0xfd), in a, (0x00)
+fddc0000 (db 0xfd), call c, 0x0000
+
+# fddd
+
+fdde00 (db 0xfd), sbc a, 0x00
+fddf (db 0xfd), rst 0x0018
+fde0 (db 0xfd), ret po
+fde1 pop iy
+fde20000 (db 0xfd), jp po, 0x0000
+fde3 ex (sp), iy
+fde40000 (db 0xfd), call po, 0x0000
+fde5 push iy
+fde600 (db 0xfd), and 0x00
+fde7 (db 0xfd), rst 0x0020
+fde8 (db 0xfd), ret pe
+fde9 jp (iy)
+fdea0000 (db 0xfd), jp pe, 0x0000
+fdeb (db 0xfd), ex de, hl
+fdec0000 (db 0xfd), call pe, 0x0000
+
+fded00 (db 0xfd), xnop 0xed00
+fded01 (db 0xfd), xnop 0xed01
+fded02 (db 0xfd), xnop 0xed02
+fded03 (db 0xfd), xnop 0xed03
+fded04 (db 0xfd), xnop 0xed04
+fded05 (db 0xfd), xnop 0xed05
+fded06 (db 0xfd), xnop 0xed06
+fded07 (db 0xfd), xnop 0xed07
+fded08 (db 0xfd), xnop 0xed08
+fded09 (db 0xfd), xnop 0xed09
+fded0a (db 0xfd), xnop 0xed0a
+fded0b (db 0xfd), xnop 0xed0b
+fded0c (db 0xfd), xnop 0xed0c
+fded0d (db 0xfd), xnop 0xed0d
+fded0e (db 0xfd), xnop 0xed0e
+fded0f (db 0xfd), xnop 0xed0f
+fded10 (db 0xfd), xnop 0xed10
+fded11 (db 0xfd), xnop 0xed11
+fded12 (db 0xfd), xnop 0xed12
+fded13 (db 0xfd), xnop 0xed13
+fded14 (db 0xfd), xnop 0xed14
+fded15 (db 0xfd), xnop 0xed15
+fded16 (db 0xfd), xnop 0xed16
+fded17 (db 0xfd), xnop 0xed17
+fded18 (db 0xfd), xnop 0xed18
+fded19 (db 0xfd), xnop 0xed19
+fded1a (db 0xfd), xnop 0xed1a
+fded1b (db 0xfd), xnop 0xed1b
+fded1c (db 0xfd), xnop 0xed1c
+fded1d (db 0xfd), xnop 0xed1d
+fded1e (db 0xfd), xnop 0xed1e
+fded1f (db 0xfd), xnop 0xed1f
+fded20 (db 0xfd), xnop 0xed20
+fded21 (db 0xfd), xnop 0xed21
+fded22 (db 0xfd), xnop 0xed22
+fded23 (db 0xfd), xnop 0xed23
+fded24 (db 0xfd), xnop 0xed24
+fded25 (db 0xfd), xnop 0xed25
+fded26 (db 0xfd), xnop 0xed26
+fded27 (db 0xfd), xnop 0xed27
+fded28 (db 0xfd), xnop 0xed28
+fded29 (db 0xfd), xnop 0xed29
+fded2a (db 0xfd), xnop 0xed2a
+fded2b (db 0xfd), xnop 0xed2b
+fded2c (db 0xfd), xnop 0xed2c
+fded2d (db 0xfd), xnop 0xed2d
+fded2e (db 0xfd), xnop 0xed2e
+fded2f (db 0xfd), xnop 0xed2f
+fded30 (db 0xfd), xnop 0xed30
+fded31 (db 0xfd), xnop 0xed31
+fded32 (db 0xfd), xnop 0xed32
+fded33 (db 0xfd), xnop 0xed33
+fded34 (db 0xfd), xnop 0xed34
+fded35 (db 0xfd), xnop 0xed35
+fded36 (db 0xfd), xnop 0xed36
+fded37 (db 0xfd), xnop 0xed37
+fded38 (db 0xfd), xnop 0xed38
+fded39 (db 0xfd), xnop 0xed39
+fded3a (db 0xfd), xnop 0xed3a
+fded3b (db 0xfd), xnop 0xed3b
+fded3c (db 0xfd), xnop 0xed3c
+fded3d (db 0xfd), xnop 0xed3d
+fded3e (db 0xfd), xnop 0xed3e
+fded3f (db 0xfd), xnop 0xed3f
+fded40 (db 0xfd), in b, (c)
+fded41 (db 0xfd), out (c), b
+fded42 (db 0xfd), sbc hl, bc
+fded430000 (db 0xfd), ld (0x0000), bc
+fded44 (db 0xfd), neg
+fded45 (db 0xfd), retn
+fded46 (db 0xfd), im 0
+fded47 (db 0xfd), ld i, a
+fded48 (db 0xfd), in c, (c)
+fded49 (db 0xfd), out (c), c
+fded4a (db 0xfd), adc hl, bc
+fded4b0000 (db 0xfd), ld bc, (0x0000)
+fded4c (db 0xfd), xneg 0xed4c
+fded4d (db 0xfd), reti
+fded4e (db 0xfd), xim 0xed4e, 0
+fded4f (db 0xfd), ld r, a
+fded50 (db 0xfd), in d, (c)
+fded51 (db 0xfd), out (c), d
+fded52 (db 0xfd), sbc hl, de
+fded530000 (db 0xfd), ld (0x0000), de
+fded54 (db 0xfd), xneg 0xed54
+fded55 (db 0xfd), xretn 0xed55
+fded56 (db 0xfd), im 1
+fded57 (db 0xfd), ld a, i
+fded58 (db 0xfd), in e, (c)
+fded59 (db 0xfd), out (c), e
+fded5a (db 0xfd), adc hl, de
+fded5b0000 (db 0xfd), ld de, (0x0000)
+fded5c (db 0xfd), xneg 0xed5c
+fded5d (db 0xfd), xretn 0xed5d
+fded5e (db 0xfd), im 2
+fded5f (db 0xfd), ld a, r
+fded60 (db 0xfd), in h, (c)
+fded61 (db 0xfd), out (c), h
+fded62 (db 0xfd), sbc hl, hl
+fded630000 (db 0xfd), xld 0xed63, (0x0000), hl
+fded64 (db 0xfd), xneg 0xed64
+fded65 (db 0xfd), xretn 0xed65
+fded66 (db 0xfd), xim 0xed66, 0
+fded67 (db 0xfd), rrd
+fded68 (db 0xfd), in l, (c)
+fded69 (db 0xfd), out (c), l
+fded6a (db 0xfd), adc hl, hl
+fded6b0000 (db 0xfd), xld 0xed6b, hl, (0x0000)
+fded6c (db 0xfd), xneg 0xed6c
+fded6d (db 0xfd), xretn 0xed6d
+fded6e (db 0xfd), xim 0xed6e, 0
+fded6f (db 0xfd), rld
+fded70 (db 0xfd), in (c)
+fded71 (db 0xfd), out (c), 0x00
+fded72 (db 0xfd), sbc hl, sp
+fded730000 (db 0xfd), ld (0x0000), sp
+fded74 (db 0xfd), xneg 0xed74
+fded75 (db 0xfd), xretn 0xed75
+fded76 (db 0xfd), xim 0xed76, 1
+fded77 (db 0xfd), xnop 0xed77
+fded78 (db 0xfd), in a, (c)
+fded79 (db 0xfd), out (c), a
+fded7a (db 0xfd), adc hl, sp
+fded7b0000 (db 0xfd), ld sp, (0x0000)
+fded7c (db 0xfd), xneg 0xed7c
+fded7d (db 0xfd), xretn 0xed7d
+fded7e (db 0xfd), xim 0xed7e, 2
+fded7f (db 0xfd), xnop 0xed7f
+fded80 (db 0xfd), xnop 0xed80
+fded81 (db 0xfd), xnop 0xed81
+fded82 (db 0xfd), xnop 0xed82
+fded83 (db 0xfd), xnop 0xed83
+fded84 (db 0xfd), xnop 0xed84
+fded85 (db 0xfd), xnop 0xed85
+fded86 (db 0xfd), xnop 0xed86
+fded87 (db 0xfd), xnop 0xed87
+fded88 (db 0xfd), xnop 0xed88
+fded89 (db 0xfd), xnop 0xed89
+fded8a (db 0xfd), xnop 0xed8a
+fded8b (db 0xfd), xnop 0xed8b
+fded8c (db 0xfd), xnop 0xed8c
+fded8d (db 0xfd), xnop 0xed8d
+fded8e (db 0xfd), xnop 0xed8e
+fded8f (db 0xfd), xnop 0xed8f
+fded90 (db 0xfd), xnop 0xed90
+fded91 (db 0xfd), xnop 0xed91
+fded92 (db 0xfd), xnop 0xed92
+fded93 (db 0xfd), xnop 0xed93
+fded94 (db 0xfd), xnop 0xed94
+fded95 (db 0xfd), xnop 0xed95
+fded96 (db 0xfd), xnop 0xed96
+fded97 (db 0xfd), xnop 0xed97
+fded98 (db 0xfd), xnop 0xed98
+fded99 (db 0xfd), xnop 0xed99
+fded9a (db 0xfd), xnop 0xed9a
+fded9b (db 0xfd), xnop 0xed9b
+fded9c (db 0xfd), xnop 0xed9c
+fded9d (db 0xfd), xnop 0xed9d
+fded9e (db 0xfd), xnop 0xed9e
+fded9f (db 0xfd), xnop 0xed9f
+fdeda0 (db 0xfd), ldi
+fdeda1 (db 0xfd), cpi
+fdeda2 (db 0xfd), ini
+fdeda3 (db 0xfd), outi
+fdeda4 (db 0xfd), xnop 0xeda4
+fdeda5 (db 0xfd), xnop 0xeda5
+fdeda6 (db 0xfd), xnop 0xeda6
+fdeda7 (db 0xfd), xnop 0xeda7
+fdeda8 (db 0xfd), ldd
+fdeda9 (db 0xfd), cpd
+fdedaa (db 0xfd), ind
+fdedab (db 0xfd), outd
+fdedac (db 0xfd), xnop 0xedac
+fdedad (db 0xfd), xnop 0xedad
+fdedae (db 0xfd), xnop 0xedae
+fdedaf (db 0xfd), xnop 0xedaf
+fdedb0 (db 0xfd), ldir
+fdedb1 (db 0xfd), cpir
+fdedb2 (db 0xfd), inir
+fdedb3 (db 0xfd), otir
+fdedb4 (db 0xfd), xnop 0xedb4
+fdedb5 (db 0xfd), xnop 0xedb5
+fdedb6 (db 0xfd), xnop 0xedb6
+fdedb7 (db 0xfd), xnop 0xedb7
+fdedb8 (db 0xfd), lddr
+fdedb9 (db 0xfd), cpdr
+fdedba (db 0xfd), indr
+fdedbb (db 0xfd), otdr
+fdedbc (db 0xfd), xnop 0xedbc
+fdedbd (db 0xfd), xnop 0xedbd
+fdedbe (db 0xfd), xnop 0xedbe
+fdedbf (db 0xfd), xnop 0xedbf
+fdedc0 (db 0xfd), xnop 0xedc0
+fdedc1 (db 0xfd), xnop 0xedc1
+fdedc2 (db 0xfd), xnop 0xedc2
+fdedc3 (db 0xfd), xnop 0xedc3
+fdedc4 (db 0xfd), xnop 0xedc4
+fdedc5 (db 0xfd), xnop 0xedc5
+fdedc6 (db 0xfd), xnop 0xedc6
+fdedc7 (db 0xfd), xnop 0xedc7
+fdedc8 (db 0xfd), xnop 0xedc8
+fdedc9 (db 0xfd), xnop 0xedc9
+fdedca (db 0xfd), xnop 0xedca
+fdedcb (db 0xfd), xnop 0xedcb
+fdedcc (db 0xfd), xnop 0xedcc
+fdedcd (db 0xfd), xnop 0xedcd
+fdedce (db 0xfd), xnop 0xedce
+fdedcf (db 0xfd), xnop 0xedcf
+fdedd0 (db 0xfd), xnop 0xedd0
+fdedd1 (db 0xfd), xnop 0xedd1
+fdedd2 (db 0xfd), xnop 0xedd2
+fdedd3 (db 0xfd), xnop 0xedd3
+fdedd4 (db 0xfd), xnop 0xedd4
+fdedd5 (db 0xfd), xnop 0xedd5
+fdedd6 (db 0xfd), xnop 0xedd6
+fdedd7 (db 0xfd), xnop 0xedd7
+fdedd8 (db 0xfd), xnop 0xedd8
+fdedd9 (db 0xfd), xnop 0xedd9
+fdedda (db 0xfd), xnop 0xedda
+fdeddb (db 0xfd), xnop 0xeddb
+fdeddc (db 0xfd), xnop 0xeddc
+fdeddd (db 0xfd), xnop 0xeddd
+fdedde (db 0xfd), xnop 0xedde
+fdeddf (db 0xfd), xnop 0xeddf
+fdede0 (db 0xfd), xnop 0xede0
+fdede1 (db 0xfd), xnop 0xede1
+fdede2 (db 0xfd), xnop 0xede2
+fdede3 (db 0xfd), xnop 0xede3
+fdede4 (db 0xfd), xnop 0xede4
+fdede5 (db 0xfd), xnop 0xede5
+fdede6 (db 0xfd), xnop 0xede6
+fdede7 (db 0xfd), xnop 0xede7
+fdede8 (db 0xfd), xnop 0xede8
+fdede9 (db 0xfd), xnop 0xede9
+fdedea (db 0xfd), xnop 0xedea
+fdedeb (db 0xfd), xnop 0xedeb
+fdedec (db 0xfd), xnop 0xedec
+fdeded (db 0xfd), xnop 0xeded
+fdedee (db 0xfd), xnop 0xedee
+fdedef (db 0xfd), xnop 0xedef
+fdedf0 (db 0xfd), xnop 0xedf0
+fdedf1 (db 0xfd), xnop 0xedf1
+fdedf2 (db 0xfd), xnop 0xedf2
+fdedf3 (db 0xfd), xnop 0xedf3
+fdedf4 (db 0xfd), xnop 0xedf4
+fdedf5 (db 0xfd), xnop 0xedf5
+fdedf6 (db 0xfd), xnop 0xedf6
+fdedf7 (db 0xfd), xnop 0xedf7
+fdedf8 (db 0xfd), xnop 0xedf8
+fdedf9 (db 0xfd), xnop 0xedf9
+fdedfa (db 0xfd), xnop 0xedfa
+fdedfb (db 0xfd), xnop 0xedfb
+fdedfc (db 0xfd), xnop 0xedfc
+fdedfd (db 0xfd), xnop 0xedfd
+fdedfe (db 0xfd), xnop 0xedfe
+fdedff (db 0xfd), xnop 0xedff
+
+fdee00 (db 0xfd), xor 0x00
+fdef (db 0xfd), rst 0x0028
+fdf0 (db 0xfd), ret p
+fdf1 (db 0xfd), pop af
+fdf20000 (db 0xfd), jp p, 0x0000
+fdf3 (db 0xfd), di
+fdf40000 (db 0xfd), call p, 0x0000
+fdf5 (db 0xfd), push af
+fdf600 (db 0xfd), or 0x00
+fdf7 (db 0xfd), rst 0x0030
+fdf8 (db 0xfd), ret m
+fdf9 ld sp, iy
+fdfa0000 (db 0xfd), jp m, 0x0000
+fdfb (db 0xfd), ei
+fdfc0000 (db 0xfd), call m, 0x0000
+
+# fdfd
+
+fdfe00 (db 0xfd), cp 0x00
+fdff (db 0xfd), rst 0x0038
+
+fe00 cp 0x00
+ff rst 0x0038

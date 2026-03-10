@@ -1,0 +1,120 @@
+name: CMake
+
+on: [push]
+
+env:
+  # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
+  BUILD_TYPE: MinSizeRel
+
+jobs:
+  build:
+    # The CMake configure and build commands are platform agnostic and should work equally
+    # well on Windows or Mac.  You can convert this to a matrix build if you need
+    # cross-platform coverage.
+    # See: https://docs.github.com/en/free-pro-team@latest/actions/learn-github-actions/managing-complex-workflows#using-a-build-matrix
+    runs-on: ${{matrix.config.runs_on}}
+    strategy:
+        matrix:
+          config:
+            - runs_on: windows-latest
+              arch: Win32
+              output_name: Windows-32
+            - runs_on: windows-latest
+              arch: x64
+              output_name: Windows-64
+            - runs_on: macos-latest
+              output_name: macos
+            - runs_on: ubuntu-latest
+              output_name: ubuntu
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Create Build Environment
+      # Some projects don't allow in-source building, so create a separate build directory
+      # We'll use this as our working directory for all subsequent commands
+      run: cmake -E make_directory ${{runner.workspace}}/build
+
+    - name: Configure CMake (nix)
+      if: (!contains(matrix.config.runs_on, 'windows'))
+      # Use a bash shell so we can use the same syntax for environment variable
+      # access regardless of the host operating system
+      shell: bash
+      working-directory: ${{runner.workspace}}/build
+      # Note the current convention is to use the -S and -B options here to specify source 
+      # and build directories, but this is only available with CMake 3.13 and higher.  
+      # The CMake binaries on the Github Actions machines are (as of this writing) 3.12
+      run: cmake $GITHUB_WORKSPACE $CMAKE_ARCH_ARGS -DCMAKE_BUILD_TYPE=$BUILD_TYPE
+
+    - name: Configure CMake (Windows)
+      if: contains(matrix.config.runs_on, 'windows')
+      # Use a bash shell so we can use the same syntax for environment variable
+      # access regardless of the host operating system
+      shell: bash
+      working-directory: ${{runner.workspace}}/build
+      # Note the current convention is to use the -S and -B options here to specify source 
+      # and build directories, but this is only available with CMake 3.13 and higher.  
+      # The CMake binaries on the Github Actions machines are (as of this writing) 3.12
+      run: cmake $GITHUB_WORKSPACE -A ${{matrix.config.arch}} -DCMAKE_BUILD_TYPE=$BUILD_TYPE
+
+    - name: Build
+      working-directory: ${{runner.workspace}}/build
+      shell: bash
+      # Execute the build.  You can specify a specific target with "--target <NAME>"
+      run: cmake --build . --config $BUILD_TYPE
+
+    - name: Test
+      working-directory: ${{runner.workspace}}/build
+      shell: bash
+      # Execute tests defined by the CMake configuration.  
+      # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
+      run: ctest -C $BUILD_TYPE
+
+    - name: Install
+      working-directory: ${{runner.workspace}}/build
+      shell: bash
+      # Execute the build.  You can specify a specific target with "--target <NAME>"
+      # I tried here to set the install prefix to include $BUILD_TYPE and actually, while
+      # that worked for the cmake step, it seems incompatible with
+      # the marvinpinto/action-automatice-releases step (I guess it couldn't expand the
+      # $BUILD_ENV correctly so couldn't find the files).  The upload seems to work if I
+      # don't use any env var here, so ..   the prefix is fixed .  Furthermore,
+      # the action-automatic-releases doesn't like mixing / and \ and unfortunately
+      # the runner.workspace has \ on windows (but I use a / as path separator) so 
+      run: cmake --install . --config $BUILD_TYPE --prefix "${{runner.workspace}}/install"
+    
+    - name: Recopy (nix)
+      shell: bash
+      run: ls "${{runner.workspace}}/install" && mkdir for_release && cp -r ${{runner.workspace}}/install/**/* for_release && ls for_release
+      if: (!contains(matrix.config.runs_on, 'windows'))
+    
+    - name: Recopy (windows)
+      shell: bash
+      # Help. Glob doesn't work with git bash cp on windows with paths with mixed back and forward slash.
+      run: ls "${{runner.workspace}}/install" && mkdir for_release && cp "${{runner.workspace}}/install/bin/SAASound.dll" for_release && ls for_release
+      if: contains(matrix.config.runs_on, 'windows')
+
+    - name: Copy config
+      shell: bash
+      run: cp "./resources/SAASound.cfg" for_release
+      
+    - name: BleedingEdge
+      uses: "marvinpinto/action-automatic-releases@latest"
+      with:
+        repo_token: "${{ secrets.GITHUB_TOKEN }}"
+        automatic_release_tag: "bleeding-edge-${{matrix.config.output_name}}"
+        prerelease: true
+        title: "Development snapshot build for ${{matrix.config.output_name}}"
+        files: |
+          for_release/*
+    
+    #- name: BleedingEdge
+    #  uses: "svenstaro/upload-release-action@v2"
+    #  with:
+    #    repo_token: ${{ secrets.GITHUB_TOKEN }}
+    #    file: ${{runner.workspace}}/*
+    #    tag: "bleeding-edge-${{matrix.os}}"
+    #    overwrite: true
+    #    file_glob: true
+    
