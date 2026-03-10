@@ -244,26 +244,28 @@ void ESP32Video::Update(const FrameBuffer& fb)
         else
         {
             // Normal framebuffer: 1 source row → 2 display rows (2× vertical).
-            // Expand palette into a DRAM stack buffer, then memcpy ×2 to PSRAM.
-            // Sequential DRAM writes are fast; two bulk memcpy beats 2× scatter.
-            uint8_t row_buf[SAM_W * 3];
-            uint8_t* p = row_buf;
+            // Write palette-expanded pixels directly to both PSRAM rows in one
+            // pass — no intermediate row_buf, no memcpy overhead.
+            // Both row pointers advance in lockstep so the CPU writes two
+            // adjacent PSRAM cache lines per pixel group, which is more
+            // efficient than two separate memcpy calls.
+            int dy0 = off_y + sy * 2;
+            int dy1 = dy0 + 1;
+            // For visiblearea=0: off_y=48, dy0 in [48,431], dy1 in [49,432] —
+            // always within [0,DST_H). Skip the bounds check in the inner loop.
+            if (dy0 < 0 || dy1 >= DST_H) continue;  // clip guard (never fires normally)
+            uint8_t* p0 = dst + dy0 * DST_STRIDE + dst_x_bytes;
+            uint8_t* p1 = dst + dy1 * DST_STRIDE + dst_x_bytes;
+
             if (vdiag) s_expand_us -= esp_timer_get_time();
             for (int sx = 0; sx < render_w; ++sx)
             {
                 const PaletteEntry& e = m_palette[src_line[sx] & 0x7F];
-                *p++ = e.r; *p++ = e.g; *p++ = e.b;
+                *p0++ = e.r; *p0++ = e.g; *p0++ = e.b;
+                *p1++ = e.r; *p1++ = e.g; *p1++ = e.b;
             }
             if (vdiag) s_expand_us += esp_timer_get_time();
-
-            int dy0 = off_y + sy * 2;
-            int dy1 = dy0 + 1;
-            if (vdiag) s_copy_us -= esp_timer_get_time();
-            if (dy0 >= 0 && dy0 < DST_H)
-                memcpy(dst + dy0 * DST_STRIDE + dst_x_bytes, row_buf, render_bytes);
-            if (dy1 >= 0 && dy1 < DST_H)
-                memcpy(dst + dy1 * DST_STRIDE + dst_x_bytes, row_buf, render_bytes);
-            if (vdiag) s_copy_us += esp_timer_get_time();
+            // s_copy_us stays 0 — no separate copy phase
         }
     }
 
