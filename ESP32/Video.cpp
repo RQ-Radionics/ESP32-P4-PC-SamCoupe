@@ -2,12 +2,12 @@
 //
 // Video.cpp: ESP32 video output via LT8912B HDMI bridge (sim_display component)
 //
-// Display: 640×480 RGB888 (pclk=40MHz — PLL_F240M/6 exact, VGA timings).
+// Display: 1280×720 RGB888 (pclk=74.25MHz — CEA-861 VIC-4, 720p@60Hz).
 // SAM framebuffer: visiblearea=0 → 512×192 pixels, 1 byte/pixel (palette index).
-// Scaling: 1×H, 2×V → 512×384 image centred in 640×480.
-// Padding: 64px left/right, 48px top/bottom (black border).
+// Scaling: 1×H, 2×V → 512×384 image centred in 1280×720.
+// Padding: 384px left/right, 168px top/bottom (black border).
 //
-// DST_STRIDE = 640×3 = 1920 bytes per display row.
+// DST_STRIDE = 1280×3 = 3840 bytes per display row.
 // Each SAM row is expanded to a 1536-byte DRAM row_buf (512 pixels × RGB888),
 // then copied into the framebuffer at the correct horizontal offset (OFF_X*3).
 // Two vertically-doubled rows (dy0, dy1) are written per SAM source row.
@@ -33,17 +33,17 @@ static const char* TAG = "video";
 
 // ── Display geometry ──────────────────────────────────────────────────────────
 // Must match sdkconfig.defaults CONFIG_SIM_DISPLAY_HACT/VACT.
-static constexpr int DST_W      = 640;
-static constexpr int DST_H      = 480;
-static constexpr int DST_STRIDE = DST_W * 3;   // 1920 bytes per row
+static constexpr int DST_W      = 1280;
+static constexpr int DST_H      = 720;
+static constexpr int DST_STRIDE = DST_W * 3;   // 3840 bytes per row
 
-// SAM active area: 512×192 → 2×V → 512×384, centred in 640×480
+// SAM active area: 512×192 → 2×V → 512×384, centred in 1280×720
 static constexpr int SAM_W      = 512;
 static constexpr int SAM_H      = 192;
 static constexpr int SCALED_H   = SAM_H * 2;   // 384
 static constexpr int SCALED_W   = SAM_W;        // 512 (no horizontal scaling)
-static constexpr int OFF_X      = (DST_W - SCALED_W) / 2;  // 64
-static constexpr int OFF_Y      = (DST_H - SCALED_H) / 2;  // 48
+static constexpr int OFF_X      = (DST_W - SCALED_W) / 2;  // 384
+static constexpr int OFF_Y      = (DST_H - SCALED_H) / 2;  // 168
 
 // ── ESP32Video: IVideoBase implementation ────────────────────────────────────
 
@@ -170,7 +170,7 @@ bool ESP32Video::Init()
     BuildPalette();
     memset(m_prev, 0xFF, sizeof(m_prev));
     m_initialized = true;
-    ESP_LOGI(TAG, "ESP32Video: %dx%d display, SAM %dx%d -> 1xH 2xV -> pad L/R %dpx T/B %dpx (dirty-track, pclk=40MHz)",
+    ESP_LOGI(TAG, "ESP32Video: %dx%d display, SAM %dx%d -> 1xH 2xV -> pad L/R %dpx T/B %dpx (dirty-track, 720p@60Hz)",
              DST_W, DST_H, SAM_W, SAM_H, OFF_X, OFF_Y);
     return true;
 }

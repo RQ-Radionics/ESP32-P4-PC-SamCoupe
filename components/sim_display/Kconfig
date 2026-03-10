@@ -76,13 +76,12 @@ menu "SimCoupe Display (LT8912B HDMI Bridge)"
             Vertical active line count (e.g. 768 for 1024x768).
 
     config SIM_DISPLAY_PCLK_MHZ
-        int "Pixel clock (MHz)"
-        default 60
+        int "Pixel clock (MHz, integer — for logging)"
+        default 74
         help
-            Pixel clock in MHz. Must be an exact divisor of the DPI clock source.
-            DPI clock source = PLL_F240M (240 MHz).
-            Valid exact values: 240/4=60, 240/5=48, 240/6=40, 240/8=30 MHz.
-            Use 60 MHz for 1024x768@60Hz.
+            Pixel clock in MHz (integer part). Used for log messages only.
+            The actual APLL frequency is hardcoded to 74.25 MHz in sim_display.c
+            for CEA-861 720p@60Hz.
 
     config SIM_DISPLAY_HS
         int "Horizontal sync width (pixels)"
