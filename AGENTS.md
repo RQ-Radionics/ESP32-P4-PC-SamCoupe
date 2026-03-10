@@ -158,7 +158,7 @@ For more details, see README.md and docs/QUICKSTART.md.
 ### Hardware Target
 
 - **Board**: Olimex ESP32-P4-PC (ESP32-P4, dual-core RISC-V 400 MHz, 32 MB PSRAM, 16 MB flash)
-- **Display**: HDMI via LT8912B bridge (DPI RGB888 → MIPI DSI → HDMI), 512×480 active area
+- **Display**: HDMI via LT8912B bridge (DPI RGB888 → MIPI DSI → HDMI), 640×480@60Hz VESA (SAM 512×384 centrado)
 - **Audio**: ES8311 codec via I2S, 22050 Hz mono
 - **Input**: USB HID keyboard via FE1.1s hub (PS/2 Set2 scancodes)
 - **Storage**: microSD card mounted at `/sdcard`

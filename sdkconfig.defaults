@@ -135,28 +135,29 @@ CONFIG_SIM_DISPLAY_HPD_GPIO=15
 CONFIG_SIM_DISPLAY_HDMI_MODE=y
 CONFIG_SIM_DISPLAY_DSI_LANES=2
 CONFIG_SIM_DISPLAY_DSI_LANE_MBPS=400
-# 512×480@71Hz: pclk=30MHz (PLL_F240M/8 exact)
-# SAM active area is exactly 512px wide — no horizontal padding needed.
-# htotal kept at 840 (same as 640×480) by moving the 128 saved pixels
-# into HBP (120+128=248), preserving pixel clock and line frequency.
-#   htotal = 512+64+16+248 = 840
-#   fps = 30e6 / (840*500) = 71.4 Hz (unchanged)
-# Vertical: 384 active (192 SAM lines × 2) centred in 480 → 48px top/bottom pad.
-# lane_mbps >= pclk*24/num_lanes = 30*24/2 = 360 → use 400 Mbps.
-# SETTLE=0x04: Linux kernel uses 0x04 for vactive<=600.
-# DDS_0/1/2: chip-internal constants, same for all resolutions.
-CONFIG_SIM_DISPLAY_HACT=512
+# 640×480@60Hz VESA DMT 0x04 — universally supported by all HDMI monitors.
+# pclk = 25.175 MHz → use 25 MHz (PLL_F240M/10, exact divisor).
+# htotal = 640+16+96+48 = 800  vtotal = 480+11+2+31 = 524
+# fps = 25e6 / (800*524) = 59.7 Hz ≈ 60 Hz
+# SAM active area 512×192 (2×V = 384) centred in 640×480:
+#   horizontal: 64px left/right padding
+#   vertical:   48px top/bottom padding
+# lane_mbps >= pclk*24/num_lanes = 25*24/2 = 300 → use 400 Mbps (33% margin).
+# HSYNC/VSYNC polarity: negative (0) per VESA 640×480@60Hz spec.
+# SETTLE=0x04: Linux kernel value for vactive<=600.
+# DDS: strm_sw_freq_word = pclk_mhz * 0x16C16 = 25 * 0x16C16 = 0x226D7E
+CONFIG_SIM_DISPLAY_HACT=640
 CONFIG_SIM_DISPLAY_VACT=480
-CONFIG_SIM_DISPLAY_PCLK_MHZ=30
-CONFIG_SIM_DISPLAY_HS=64
+CONFIG_SIM_DISPLAY_PCLK_MHZ=25
+CONFIG_SIM_DISPLAY_HS=96
 CONFIG_SIM_DISPLAY_HFP=16
-CONFIG_SIM_DISPLAY_HBP=248
-CONFIG_SIM_DISPLAY_VS=3
-CONFIG_SIM_DISPLAY_VFP=1
-CONFIG_SIM_DISPLAY_VBP=16
-CONFIG_SIM_DISPLAY_HSYNC_POL=1
-CONFIG_SIM_DISPLAY_VSYNC_POL=1
+CONFIG_SIM_DISPLAY_HBP=48
+CONFIG_SIM_DISPLAY_VS=2
+CONFIG_SIM_DISPLAY_VFP=11
+CONFIG_SIM_DISPLAY_VBP=31
+CONFIG_SIM_DISPLAY_HSYNC_POL=0
+CONFIG_SIM_DISPLAY_VSYNC_POL=0
 CONFIG_SIM_DISPLAY_SETTLE=0x04
-CONFIG_SIM_DISPLAY_DDS_0=0x93
-CONFIG_SIM_DISPLAY_DDS_1=0x3E
-CONFIG_SIM_DISPLAY_DDS_2=0x29
+CONFIG_SIM_DISPLAY_DDS_0=0x22
+CONFIG_SIM_DISPLAY_DDS_1=0x6D
+CONFIG_SIM_DISPLAY_DDS_2=0x7E

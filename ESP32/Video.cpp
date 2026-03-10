@@ -2,14 +2,15 @@
 //
 // Video.cpp: ESP32 video output via LT8912B HDMI bridge (sim_display component)
 //
-// Display: 512×480 RGB888 (pclk=30MHz, ~71Hz refresh).
+// Display: 640×480 RGB888 (pclk=25MHz, 60Hz — VESA DMT 0x04, universally supported).
 // SAM framebuffer: visiblearea=0 → 512×192 pixels, 1 byte/pixel (palette index).
-// Scaling: 1×H, 2×V → 512×384 image centred vertically in 512×480.
-// Padding: 0px left/right (exact fit), 48px black top/bottom.
+// Scaling: 1×H, 2×V → 512×384 image centred in 640×480.
+// Padding: 64px left/right, 48px top/bottom (black border).
 //
-// With DST_W=512 = SAM_W, there is NO horizontal padding.
-// DST_STRIDE = 512×3 = 1536 bytes = exactly one expanded SAM row.
-// Two vertically-doubled rows (dy0, dy1) are contiguous in the framebuffer.
+// DST_STRIDE = 640×3 = 1920 bytes per display row.
+// Each SAM row is expanded to a 1536-byte DRAM row_buf (512 pixels × RGB888),
+// then copied into the framebuffer at the correct horizontal offset (OFF_X*3).
+// Two vertically-doubled rows (dy0, dy1) are written per SAM source row.
 //
 // Dirty line tracking: each SAM row is compared with the previous frame.
 // Only changed rows are expanded and written to PSRAM. The flush region
@@ -17,9 +18,9 @@
 // On static screens this eliminates most PSRAM writes; worst case (full
 // motion) adds only 192 × memcmp(512) = ~98KB of DRAM comparison overhead.
 //
-// pGuiScreen (OSD): 512×384 — rendered 1:1 starting at row 48.
+// pGuiScreen (OSD): 512×384 — rendered 1:1 starting at (OFF_X, OFF_Y).
 //
-// Framebuffer bandwidth: 512×480×3 = 737,280 bytes (vs 921,600 at 640×480).
+// Framebuffer bandwidth: 640×480×3 = 921,600 bytes.
 
 #include "SimCoupe.h"
 #include "Video.h"
@@ -36,14 +37,16 @@ static const char* TAG = "video";
 
 // ── Display geometry ──────────────────────────────────────────────────────────
 // Must match sdkconfig.defaults CONFIG_SIM_DISPLAY_HACT/VACT.
-static constexpr int DST_W      = 512;
+static constexpr int DST_W      = 640;
 static constexpr int DST_H      = 480;
-static constexpr int DST_STRIDE = DST_W * 3;   // 1536 bytes per row
+static constexpr int DST_STRIDE = DST_W * 3;   // 1920 bytes per row
 
-// SAM active area: 512×192 → 2×V → 512×384, centred in 512×480
+// SAM active area: 512×192 → 2×V → 512×384, centred in 640×480
 static constexpr int SAM_W      = 512;
 static constexpr int SAM_H      = 192;
 static constexpr int SCALED_H   = SAM_H * 2;   // 384
+static constexpr int SCALED_W   = SAM_W;        // 512 (no horizontal scaling)
+static constexpr int OFF_X      = (DST_W - SCALED_W) / 2;  // 64
 static constexpr int OFF_Y      = (DST_H - SCALED_H) / 2;  // 48
 
 // ── ESP32Video: IVideoBase implementation ────────────────────────────────────
@@ -66,7 +69,8 @@ private:
     PaletteEntry m_palette[128]{};
 
     // DRAM row buffer: palette expand writes here, then 2×memcpy to PSRAM.
-    alignas(4) uint8_t m_row_buf[DST_STRIDE];  // one expanded row (1536 bytes)
+    // Only SAM_W pixels wide (512×3 = 1536 bytes) — copied at offset OFF_X*3.
+    alignas(4) uint8_t m_row_buf[SAM_W * 3];   // one expanded SAM row (1536 bytes)
 
     // Previous frame snapshot for dirty line detection.
     // 512×192 = 98,304 bytes in DRAM. Compared with current frame per-row
@@ -101,7 +105,7 @@ void Exit()
 
 void NativeToSam(int& x, int& y)
 {
-    // No horizontal offset (DST_W == SAM_W); undo 2×V scaling and top pad
+    x = x - OFF_X;
     y = (y - OFF_Y) / 2;
 }
 
@@ -171,8 +175,8 @@ bool ESP32Video::Init()
     // Mark all rows dirty for the first frame
     memset(m_prev, 0xFF, sizeof(m_prev));
     m_initialized = true;
-    ESP_LOGI(TAG, "ESP32Video: %dx%d display, SAM %dx%d -> 1xH 2xV -> pad top/bot %dpx (dirty-track)",
-             DST_W, DST_H, SAM_W, SAM_H, OFF_Y);
+    ESP_LOGI(TAG, "ESP32Video: %dx%d display, SAM %dx%d -> 1xH 2xV -> pad L/R %dpx T/B %dpx (dirty-track)",
+             DST_W, DST_H, SAM_W, SAM_H, OFF_X, OFF_Y);
     return true;
 }
 
@@ -219,20 +223,21 @@ void ESP32Video::Update(const FrameBuffer& fb)
 
     if (is_gui)
     {
-        // GUI: 1 source row → 1 display row, direct palette expand to PSRAM.
+        // GUI: 1 source row → 1 display row, palette expand directly to PSRAM.
         // src_h=384, fits exactly in [OFF_Y .. OFF_Y+384) = [48..432).
+        // Horizontal: src_w=512 pixels starting at column OFF_X=64.
         const int rows = (src_h <= DST_H - OFF_Y) ? src_h : DST_H - OFF_Y;
         for (int sy = 0; sy < rows; ++sy)
         {
             const uint8_t* src_line = fb.GetLine(sy);
-            uint8_t* p = dst + (OFF_Y + sy) * DST_STRIDE;
+            uint8_t* p = dst + (OFF_Y + sy) * DST_STRIDE + OFF_X * 3;
             for (int sx = 0; sx < src_w; ++sx)
             {
                 const PaletteEntry& e = m_palette[src_line[sx] & 0x7F];
                 *p++ = e.r; *p++ = e.g; *p++ = e.b;
             }
         }
-        // Flush active GUI area
+        // Flush active GUI area (full rows — includes left/right padding columns)
         sim_display_flush_region((size_t)OFF_Y * DST_STRIDE,
                                  (size_t)rows * DST_STRIDE);
     }
@@ -276,8 +281,9 @@ void ESP32Video::Update(const FrameBuffer& fb)
 
             if (vdiag) s_copy_us -= esp_timer_get_time();
             int dy0 = OFF_Y + sy * 2;
-            memcpy(dst + dy0 * DST_STRIDE,       m_row_buf, DST_STRIDE);
-            memcpy(dst + (dy0+1) * DST_STRIDE,   m_row_buf, DST_STRIDE);
+            const size_t row_bytes = SAM_W * 3;  // 1536 bytes
+            memcpy(dst + dy0       * DST_STRIDE + OFF_X * 3, m_row_buf, row_bytes);
+            memcpy(dst + (dy0 + 1) * DST_STRIDE + OFF_X * 3, m_row_buf, row_bytes);
             if (vdiag) s_copy_us += esp_timer_get_time();
 
             if (first_dirty < 0) first_dirty = sy;
