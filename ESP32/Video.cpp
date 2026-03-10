@@ -57,6 +57,11 @@ private:
     struct PaletteEntry { uint8_t r, g, b; };
     PaletteEntry m_palette[128]{};
 
+    // Row buffer in DRAM: palette expand writes here, then memcpy to PSRAM.
+    // Member (not stack) to avoid repeated alloc/dealloc across 192 iterations.
+    static constexpr int ROW_BUF_BYTES = SAM_W * 3;
+    uint8_t m_row_buf[1][ROW_BUF_BYTES];
+
     bool m_initialized = false;
 };
 
@@ -244,28 +249,35 @@ void ESP32Video::Update(const FrameBuffer& fb)
         else
         {
             // Normal framebuffer: 1 source row → 2 display rows (2× vertical).
-            // Write palette-expanded pixels directly to both PSRAM rows in one
-            // pass — no intermediate row_buf, no memcpy overhead.
-            // Both row pointers advance in lockstep so the CPU writes two
-            // adjacent PSRAM cache lines per pixel group, which is more
-            // efficient than two separate memcpy calls.
+            // Expand palette into a DRAM member buffer (not stack — avoids
+            // repeated stack alloc/dealloc overhead across 192 iterations).
+            // Then copy to both PSRAM rows.
+            //
+            // dy0 and dy1 are consecutive rows in the display framebuffer.
+            // Their active pixels (dst_x_bytes .. dst_x_bytes+render_bytes) are
+            // DST_STRIDE apart.  We cannot do a single memcpy because the rows
+            // are not contiguous (there is padding between them in the 640-wide
+            // framebuffer).  Two separate memcpy calls remain the best option.
+
             int dy0 = off_y + sy * 2;
             int dy1 = dy0 + 1;
-            // For visiblearea=0: off_y=48, dy0 in [48,431], dy1 in [49,432] —
-            // always within [0,DST_H). Skip the bounds check in the inner loop.
-            if (dy0 < 0 || dy1 >= DST_H) continue;  // clip guard (never fires normally)
-            uint8_t* p0 = dst + dy0 * DST_STRIDE + dst_x_bytes;
-            uint8_t* p1 = dst + dy1 * DST_STRIDE + dst_x_bytes;
+            if (dy0 < 0 || dy1 >= DST_H) continue;
+
+            uint8_t* row = m_row_buf[0];  // single DRAM buffer (no ping-pong needed)
+            uint8_t* p = row;
 
             if (vdiag) s_expand_us -= esp_timer_get_time();
             for (int sx = 0; sx < render_w; ++sx)
             {
                 const PaletteEntry& e = m_palette[src_line[sx] & 0x7F];
-                *p0++ = e.r; *p0++ = e.g; *p0++ = e.b;
-                *p1++ = e.r; *p1++ = e.g; *p1++ = e.b;
+                *p++ = e.r; *p++ = e.g; *p++ = e.b;
             }
             if (vdiag) s_expand_us += esp_timer_get_time();
-            // s_copy_us stays 0 — no separate copy phase
+
+            if (vdiag) s_copy_us -= esp_timer_get_time();
+            memcpy(dst + dy0 * DST_STRIDE + dst_x_bytes, row, render_bytes);
+            memcpy(dst + dy1 * DST_STRIDE + dst_x_bytes, row, render_bytes);
+            if (vdiag) s_copy_us += esp_timer_get_time();
         }
     }
 
