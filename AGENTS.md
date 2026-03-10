@@ -148,3 +148,112 @@ For more details, see README.md and docs/QUICKSTART.md.
 - If push fails, resolve and retry until it succeeds
 
 <!-- END BEADS INTEGRATION -->
+
+## SimCoupe ESP32-P4 Port — Project Context
+
+**Project**: SimCoupe SAM Coupé emulator ported to Olimex ESP32-P4-PC  
+**Credit**: RQ-Radionics (Ramon Martinez @ Jorge Fuertes)  
+**Status**: 100% emulation speed achieved (50 fps stable)
+
+### Hardware Target
+
+- **Board**: Olimex ESP32-P4-PC (ESP32-P4, dual-core RISC-V 400 MHz, 32 MB PSRAM, 16 MB flash)
+- **Display**: HDMI via LT8912B bridge (DPI RGB888 → MIPI DSI → HDMI), 512×480 active area
+- **Audio**: ES8311 codec via I2S, 22050 Hz mono
+- **Input**: USB HID keyboard via FE1.1s hub (PS/2 Set2 scancodes)
+- **Storage**: microSD card mounted at `/sdcard`
+
+### Build
+
+```bash
+# Full clean build
+bash build_olimex_p4pc.sh clean
+
+# Incremental build
+idf.py build
+
+# Flash
+idf.py flash monitor
+```
+
+Requires ESP-IDF v5.3+ with ESP32-P4 support. Source the IDF environment first:
+```bash
+source /path/to/esp-idf/export.sh
+```
+
+### FreeRTOS Task Layout
+
+| Priority | Task | Core |
+|----------|------|------|
+| 22+ | esp_timer, ipc0/1 | 0/1 |
+| 15 | simcoupe_task (Z80 + video) | 1 |
+| 14 | sound_task (Sound::FrameUpdate) | 0 |
+| 10 | usb_lib | 0 |
+| 5 | usb_client | 0 |
+| 0 | IDLE0, IDLE1 | 0/1 |
+
+**simcoupe_task stack must be DRAM** — `esp_cache_msync(DIR_C2M)` can invalidate PSRAM stack cache lines mid-function causing load access faults.
+
+### Sound Pipeline (per frame)
+
+```
+Core 1: ExecuteChunk(N) → Frame::End(N) → IO::FrameUpdate(N) →
+        [take s_sound_done] → [give s_sound_start] → ExecuteChunk(N+1)
+Core 0: [take s_sound_start] → Sound::FrameUpdate(N) → [give s_sound_done]
+```
+
+Pre-give `s_sound_done` at startup so the first frame doesn't stall.
+
+### Video Pipeline (dirty-line tracking)
+
+```
+Frame::End(N) → Video::Update(fb):
+  for each of 192 rows:
+    memcmp(row, m_prev[row], 512)   ← DRAM, skip if unchanged
+    expand: palette[index] → RGB888 → m_row_buf (DRAM)
+    memcpy(m_row_buf → PSRAM dy0)
+    memcpy(m_row_buf → PSRAM dy1)
+  flush_region(first_dirty..last_dirty only)
+```
+
+On static screens (boot, BASIC) dirty=0/192 → video blit drops from ~13 ms to ~2 ms.
+
+### Key Performance Discoveries
+
+1. **PSRAM bus contention**: Overlapping Z80 (reads SAM RAM from PSRAM) with async video blit (writes display buffer to PSRAM) on separate cores causes severe contention — Z80 slows from 12.5 ms to 21.5 ms/frame. Async video was reverted; video runs synchronously after Z80.
+
+2. **Dirty-line tracking**: Compare each 512-byte SAM row with previous frame (DRAM→DRAM `memcmp`). Static screens skip nearly all blit work.
+
+3. **SAASound `double` → `float`**: ESP32-P4 RISC-V has hardware FPU for `float` only; `double` is software-emulated (~10× slower). `scale_for_output()` called 441×/frame — switching to `float` gave a major speedup.
+
+4. **SAASound DEFAULT_OVERSAMPLE 6 → 2**: Reduces chip ticks from 28,224 to 1,764 per frame (16× less work). Inaudible quality difference at 22050 Hz.
+
+5. **FreqTable PSRAM → DRAM**: 8 KB frequency lookup table accessed every oscillator tick. DRAM latency ~5 ns vs PSRAM ~100 ns.
+
+6. **512×480 display**: SAM active area is exactly 512 px wide. Eliminates horizontal padding, reduces flush region ~20% vs 640×480, makes rows contiguous in PSRAM.
+
+### Key Source Files
+
+| File | Purpose |
+|------|---------|
+| `main/main.cpp` | `app_main` + `simcoupe_task` (Core 1, prio 15, 32 KB DRAM stack) |
+| `components/simcoupe_core/Base/CPU.cpp` | `sound_task` (Core 0, prio 14), semaphore pipeline |
+| `ESP32/Video.cpp` | 512×480, dirty-line tracking, `m_prev[98304]` DRAM |
+| `ESP32/Audio.cpp` | Real `sim_audio_write()`, no stubs |
+| `components/simcoupe_core/SAASound/src/SAAImpl.cpp` | `float` arithmetic + filter state |
+| `components/simcoupe_core/SAASound/src/defns.h` | `DEFAULT_OVERSAMPLE=2` |
+| `components/simcoupe_core/SAASound/src/SAAFreq.cpp` | `FreqTable` in DRAM |
+| `components/simcoupe_core/Base/Sound.h` | `SAMPLE_FREQ=22050` |
+| `components/simcoupe_core/Base/SAMIO.cpp` | `Sound::FrameUpdate()` removed from `IO::FrameUpdate()` |
+| `sdkconfig.defaults` | `HACT=512`, `HBP=248`, `SAMPLE_RATE=22050` |
+
+### Open Issues
+
+- **SamCoupe-zv2**: Replace kosarev Z80 with Z80_JLS from ESPectrum (deferred — previous attempt had emulation correctness issues)
+- **SamCoupe-d9y**: Special keys (F11 reset, F12 menu), persistent config on SD card, auto-load disk
+
+### Reference Repositories (do not modify)
+
+- `/Volumes/FastDisk/Queru/Ports/esp32-mos/` — working ESP32-P4-PC reference implementation
+- `/Volumes/FastDisk/Emu/simcoupe/` — original SimCoupe source
+- `/Volumes/FastDisk/Emu/ESPectrum/` — ESPectrum (Z80_JLS source)
