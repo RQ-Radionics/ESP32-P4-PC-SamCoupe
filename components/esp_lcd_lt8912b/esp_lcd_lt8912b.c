@@ -356,7 +356,10 @@ static esp_err_t lt8912b_init_common(int hpd_gpio)
     }
     ESP_LOGI(TAG, "LT8912B detected (ID 0x%02X%02X)", id_h, id_l);
 
-    /* Init sequence — exactly matches panel_lt8912b_init() in production test */
+    /* Phase 1 — before DPI enable (chip config, MIPI RX setup, DDS, video timing).
+     * Phase 2 (detect → video_timing×2 → avi → rxlogicres → audio → lvds → hdmi)
+     * runs in post_dpi_enable(), called AFTER esp_lcd_panel_init() starts the DPI
+     * stream — exactly as the production test does via panel_lt8912b_init() callback. */
     ESP_GOTO_ON_ERROR(lt8912b_write_digital_clock_en(), err_devs, TAG, "digital_clock_en");
     ESP_GOTO_ON_ERROR(lt8912b_write_tx_analog(),        err_devs, TAG, "tx_analog");
     ESP_GOTO_ON_ERROR(lt8912b_write_cbus_analog(),      err_devs, TAG, "cbus_analog");
@@ -364,30 +367,7 @@ static esp_err_t lt8912b_init_common(int hpd_gpio)
     ESP_GOTO_ON_ERROR(lt8912b_write_mipi_analog(),      err_devs, TAG, "mipi_analog");
     ESP_GOTO_ON_ERROR(lt8912b_write_mipi_basic(),       err_devs, TAG, "mipi_basic");
     ESP_GOTO_ON_ERROR(lt8912b_write_dds_config(),       err_devs, TAG, "dds_config");
-    ESP_GOTO_ON_ERROR(lt8912b_write_video_timing(),     err_devs, TAG, "video_timing 1");
-    /* detect_input_mipi: read MIPI sync counters (diagnostic only, no side effects) */
-    {
-        uint8_t hs_l = 0, hs_h = 0, vs_l = 0, vs_h = 0;
-        lt_read(s_lt.dev_main, 0x9C, &hs_l);
-        lt_read(s_lt.dev_main, 0x9D, &hs_h);
-        lt_read(s_lt.dev_main, 0x9E, &vs_l);
-        lt_read(s_lt.dev_main, 0x9F, &vs_h);
-        ESP_LOGI(TAG, "MIPI detect: Hsync=0x%02X%02X Vsync=0x%02X%02X", hs_h, hs_l, vs_h, vs_l);
-    }
-    ESP_GOTO_ON_ERROR(lt8912b_write_video_timing(),     err_devs, TAG, "video_timing 2");
-    ESP_GOTO_ON_ERROR(lt8912b_write_avi_infoframe(),    err_devs, TAG, "avi_infoframe");
-    ESP_GOTO_ON_ERROR(lt8912b_write_rxlogicres(),       err_devs, TAG, "rxlogicres");
-    /* Audio IIS Mode (HDMI=0x01) + Audio IIS En — matches production test */
-    ESP_GOTO_ON_ERROR(lt_write(s_lt.dev_main,  0xB2, 0x01), err_devs, TAG, "audio_iis_mode");
-    ESP_GOTO_ON_ERROR(lt_write(s_lt.dev_audio, 0x06, 0x08), err_devs, TAG, "audio_iis_en 06");
-    ESP_GOTO_ON_ERROR(lt_write(s_lt.dev_audio, 0x07, 0xF0), err_devs, TAG, "audio_iis_en 07");
-    ESP_GOTO_ON_ERROR(lt_write(s_lt.dev_audio, 0x34, 0xD2), err_devs, TAG, "audio_iis_en 34");
-    ESP_GOTO_ON_ERROR(lt_write(s_lt.dev_audio, 0x0F, 0x2B), err_devs, TAG, "audio_iis_en 0F");
-    ESP_GOTO_ON_ERROR(lt8912b_write_lvds_config(),      err_devs, TAG, "lvds_config");
-    /* LVDS output disable (same as production test _lvds_output(false)) */
-    ESP_GOTO_ON_ERROR(lt_write(s_lt.dev_main, 0x44, 0x31), err_devs, TAG, "lvds_disable");
-    /* HDMI output enable (same as production test _hdmi_output(true)) */
-    ESP_GOTO_ON_ERROR(lt_write(s_lt.dev_main, 0x33, 0x0E), err_devs, TAG, "hdmi_out_en");
+    ESP_GOTO_ON_ERROR(lt8912b_write_video_timing(),     err_devs, TAG, "video_timing pre-DPI");
 
     s_lt.hpd_gpio = hpd_gpio;
     lt8912b_hpd_gpio_init(s_lt.hpd_gpio);
@@ -507,20 +487,48 @@ esp_err_t esp_lcd_lt8912b_post_dpi_enable(void)
 {
     if (!s_lt.initialized) return ESP_ERR_INVALID_STATE;
 
-    i2c_master_dev_handle_t m = s_lt.dev_main;
+    /* Phase 2 — runs AFTER esp_lcd_panel_init() has started the DPI pixel stream.
+     * Matches the second half of panel_lt8912b_init() in the production test,
+     * which is called as a callback from esp_lcd_panel_init() (DPI already active). */
 
-    uint8_t hs_l = 0, hs_h = 0, vs_l = 0, vs_h = 0;
-    lt_read(m, 0x9C, &hs_l);
-    lt_read(m, 0x9D, &hs_h);
-    lt_read(m, 0x9E, &vs_l);
-    lt_read(m, 0x9F, &vs_h);
-    /* Do NOT re-trigger rxlogicres/dds_rst here — the chip already locked
-     * during init (DSI starts before post_dpi_enable is called). A second
-     * rxlogicres pulse resets the PLL and breaks sync (Vsync drops from
-     * 0x01D8 to 0x003D). Diagnostic read only. */
-    ESP_LOGI(TAG, "MIPI sync: Hsync=0x%02X%02X Vsync=0x%02X%02X%s",
-             hs_h, hs_l, vs_h, vs_l,
-             (hs_l || hs_h || vs_l || vs_h) ? " — DSI locked" : " — NO DSI SIGNAL");
+    /* detect_input_mipi: read MIPI sync counters to confirm DSI is active */
+    {
+        uint8_t hs_l = 0, hs_h = 0, vs_l = 0, vs_h = 0;
+        lt_read(s_lt.dev_main, 0x9C, &hs_l);
+        lt_read(s_lt.dev_main, 0x9D, &hs_h);
+        lt_read(s_lt.dev_main, 0x9E, &vs_l);
+        lt_read(s_lt.dev_main, 0x9F, &vs_h);
+        ESP_LOGI(TAG, "MIPI detect: Hsync=0x%02X%02X Vsync=0x%02X%02X%s",
+                 hs_h, hs_l, vs_h, vs_l,
+                 (hs_l || hs_h || vs_l || vs_h) ? " — DSI active" : " — NO DSI SIGNAL");
+    }
+
+    ESP_RETURN_ON_ERROR(lt8912b_write_video_timing(),  TAG, "video_timing post-DPI");
+    ESP_RETURN_ON_ERROR(lt8912b_write_avi_infoframe(), TAG, "avi_infoframe");
+    ESP_RETURN_ON_ERROR(lt8912b_write_rxlogicres(),    TAG, "rxlogicres");
+
+    /* Audio IIS Mode (HDMI=0x01) + Audio IIS En */
+    ESP_RETURN_ON_ERROR(lt_write(s_lt.dev_main,  0xB2, 0x01), TAG, "audio_iis_mode");
+    ESP_RETURN_ON_ERROR(lt_write(s_lt.dev_audio, 0x06, 0x08), TAG, "audio_iis_en 06");
+    ESP_RETURN_ON_ERROR(lt_write(s_lt.dev_audio, 0x07, 0xF0), TAG, "audio_iis_en 07");
+    ESP_RETURN_ON_ERROR(lt_write(s_lt.dev_audio, 0x34, 0xD2), TAG, "audio_iis_en 34");
+    ESP_RETURN_ON_ERROR(lt_write(s_lt.dev_audio, 0x0F, 0x2B), TAG, "audio_iis_en 0F");
+
+    ESP_RETURN_ON_ERROR(lt8912b_write_lvds_config(),              TAG, "lvds_config");
+    ESP_RETURN_ON_ERROR(lt_write(s_lt.dev_main, 0x44, 0x31),     TAG, "lvds_disable");
+    ESP_RETURN_ON_ERROR(lt_write(s_lt.dev_main, 0x33, 0x0E),     TAG, "hdmi_out_en");
+
+    /* Read sync counters again to confirm lock after full init */
+    {
+        uint8_t hs_l = 0, hs_h = 0, vs_l = 0, vs_h = 0;
+        lt_read(s_lt.dev_main, 0x9C, &hs_l);
+        lt_read(s_lt.dev_main, 0x9D, &hs_h);
+        lt_read(s_lt.dev_main, 0x9E, &vs_l);
+        lt_read(s_lt.dev_main, 0x9F, &vs_h);
+        ESP_LOGI(TAG, "MIPI sync final: Hsync=0x%02X%02X Vsync=0x%02X%02X%s",
+                 hs_h, hs_l, vs_h, vs_l,
+                 (hs_l || hs_h || vs_l || vs_h) ? " — DSI locked" : " — NO DSI SIGNAL");
+    }
 
     return ESP_OK;
 }
