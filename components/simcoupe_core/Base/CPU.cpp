@@ -20,6 +20,16 @@
 // along with this program; if not, write to the Free Software
 // Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
+// Changes 1999-2000 by Simon Owen:
+//  - general revamp and reformat, with execution now polled for each frame
+//  - very rough contended memory timings by doubling basic timings
+//  - frame/line interrupt and flash frequency values corrected
+
+// Changes 2000-2001 by Dave Laundon
+//  - perfect contended memory timings on each memory/port access
+//  - new cpu event model to reduce the per-instruction overhead
+//  - MIDI OUT interrupt timings corrected
+
 #include "SimCoupe.h"
 #include "CPU.h"
 
@@ -37,11 +47,11 @@
 #include "Tape.h"
 #include "UI.h"
 
-#include "Z80_JLS/z80.h"
-#include "Z80_JLS/z80operations.h"
-
-// The global cpu wrapper object (thin shell around Z80:: statics)
 sam_cpu cpu;
+
+////////////////////////////////////////////////////////////////////////////////
+//  H E L P E R   M A C R O S
+
 
 bool g_fBreak, g_fPaused;
 int g_nTurbo;
@@ -61,34 +71,17 @@ bool reset_asserted = false;
 uint16_t last_in_port, last_out_port;
 uint8_t last_in_val, last_out_val;
 
-// Dummy: set to 0 by Z80_JLS HALT handler (decodeOpcode76).
-// SimCoupe's ExecuteChunk() checks Z80::isHalted() directly, so this is unused.
-uint32_t stFrame = 0;
-
 bool Init(bool fFirstInit_/*=false*/)
 {
     bool fRet = true;
 
     if (fFirstInit_)
     {
-        // Initialise Z80_JLS core
-        Z80::create();
-
-        // Set up Z80Ops function pointers (SAM Coupé has one memory model)
-        Z80Ops::fetchOpcode  = &Z80Ops::fetchOpcode_std;
-        Z80Ops::peek8        = &Z80Ops::peek8_std;
-        Z80Ops::poke8        = &Z80Ops::poke8_std;
-        Z80Ops::peek16       = &Z80Ops::peek16_std;
-        Z80Ops::poke16       = &Z80Ops::poke16_std;
-        Z80Ops::addressOnBus = &Z80Ops::addressOnBus_std;
-
         InitEvents();
         AddEvent(EventType::FrameInterrupt, 0);
         AddEvent(EventType::InputUpdate, CPU_CYCLES_PER_FRAME * 3 / 4);
 
-        // Hard reset on first init
-        Z80::reset();
-
+        cpu.on_reset(false);
         fRet &= Memory::Init(true) && IO::Init();
     }
 
@@ -103,12 +96,11 @@ void Exit(bool fReInit_)
     IO::Exit(fReInit_);
     Memory::Exit(fReInit_);
 
+    // TODO: remove after switching to use "physical" offsets instead of pointers
     if (!fReInit_)
-    {
         Breakpoint::RemoveAll();
-        Z80::destroy();
-    }
 }
+
 
 
 void ExecuteChunk()
@@ -122,24 +114,15 @@ void ExecuteChunk()
 
     for (g_fBreak = false; !g_fBreak; )
     {
-        // Execute one Z80 instruction.
-        // All T-state counting is done in the Z80Ops callbacks (Z80Ops_SAM.cpp):
-        //   fetchOpcode: 4 base + contention
-        //   peek8:       3 base + contention
-        //   poke8:       3 base + contention
-        //   addressOnBus: extra cycles (displacement, internal ops)
-        //   VIDEO::Draw: interrupt acknowledge (7) and NMI (1) cycles
-        // CPU::frame_cycles is updated directly by those callbacks.
-        Z80::execute();
+        cpu.on_step();
 
         CheckEvents(CPU::frame_cycles);
 
-        // Check for maskable interrupt (INT line asserted)
         if ((~IO::State().status & STATUS_INT_MASK) && Memory::full_contention)
-            Z80::checkINT();
+            cpu.on_handle_active_int();
 
-        // Z80_JLS handles DD/FD prefixes internally — no mid-prefix state
-        // is exposed, so we can always check breakpoints here.
+        if (cpu.get_iregp_kind() != z80::iregp::hl)
+            continue;
 
 #ifdef _DEBUG
         if (debug_break)
@@ -203,7 +186,7 @@ void Reset(bool active)
     reset_asserted = active;
     if (reset_asserted)
     {
-        Z80::reset();
+        cpu.on_reset(true);
 
         Keyin::Stop();
         Tape::Stop();
@@ -217,7 +200,7 @@ void Reset(bool active)
 
 void NMI()
 {
-    Z80::triggerNMI();
+    cpu.initiate_nmi();
     Debug::Refresh();
 }
 

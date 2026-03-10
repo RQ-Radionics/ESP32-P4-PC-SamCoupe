@@ -19,7 +19,6 @@
 
 set(SIMCOUPE_BASE "${CMAKE_CURRENT_SOURCE_DIR}/Base")
 set(EXTERN_DIR    "${CMAKE_CURRENT_SOURCE_DIR}/extern")
-set(Z80JLS_DIR    "${EXTERN_DIR}/Z80_JLS")
 
 # ── SimCoupe Base sources ──────────────────────────────────────────────────
 set(BASE_SRCS
@@ -159,10 +158,6 @@ idf_component_register(
 
         ${LIBSPECTRUM_SRCS}
         ${ESP32_SRCS}
-
-        # Z80_JLS CPU core + SimCoupe Z80Ops callbacks
-        ${Z80JLS_DIR}/Z80_JLS.cpp
-        ${SIMCOUPE_BASE}/Z80Ops_SAM.cpp
     INCLUDE_DIRS
         # Our include/ MUST come before extern/fmt/include so that our stub
         # fmt/chrono.h (which avoids <locale>) shadows the real one.
@@ -174,6 +169,7 @@ idf_component_register(
         ${SIMCOUPE_BASE}
         "${CMAKE_CURRENT_SOURCE_DIR}/SDL"
         ${EXTERN_DIR}
+        ${EXTERN_DIR}/z80
         ${EXTERN_DIR}/fmt/include
         ${SAASOUND_DIR}/src
         ${SAASOUND_DIR}/include
@@ -190,19 +186,6 @@ idf_component_register(
         sim_kbd
         sim_display
         esp_system
-)
-
-# ── Z80_JLS.cpp: force-include SAM stubs, add Z80_JLS dir to include path ─────
-# Z80_JLS.cpp includes ESPectrum-specific headers (Ports.h, Video.h, MemESP.h,
-# cpuESP.h, Tape.h, ESPConfig.h, FileUtils.h, OSDMain.h, messages.h).
-# We force-include Z80_JLS_SAM_stubs.h which provides SimCoupe-compatible
-# replacements, and add the Z80_JLS directory so the #include directives
-# resolve to our stubs (which use #pragma once to prevent re-inclusion).
-set_source_files_properties(
-    ${Z80JLS_DIR}/Z80_JLS.cpp
-    PROPERTIES
-    COMPILE_FLAGS
-        "-I${Z80JLS_DIR} -include ${Z80JLS_DIR}/Z80_JLS_SAM_stubs.h -Wno-parentheses"
 )
 
 # ── C++17 required by SimCoupe ────────────────────────────────────────────────
