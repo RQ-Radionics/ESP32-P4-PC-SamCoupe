@@ -60,16 +60,25 @@ esp_err_t sim_display_flush(void);
  * @brief Flush only a region of the back buffer to display (no swap).
  *
  * Syncs [byte_offset, byte_offset+byte_size) of the back buffer cache to
- * PSRAM and points the DPI DMA at the back buffer — but does NOT swap
- * front/back.  Used with dirty-line tracking, which writes incrementally
- * to the same buffer across frames.  Swapping would produce a stale back
- * buffer missing all previous frame content.
+ * PSRAM — but does NOT swap front/back.  Call sim_display_swap() once
+ * after all regions have been flushed to atomically present the frame.
  *
  * @param byte_offset  Byte offset from start of back buffer to start syncing.
  * @param byte_size    Number of bytes to sync.
  * @return ESP_OK on success, ESP_ERR_INVALID_STATE if not initialized.
  */
 esp_err_t sim_display_flush_region(size_t byte_offset, size_t byte_size);
+
+/**
+ * @brief Swap front/back buffers — present the back buffer on screen.
+ *
+ * Points the DPI DMA at the current back buffer (making it the new front),
+ * then advances the back buffer index.  Must be called exactly once per
+ * frame, after all sim_display_flush_region() calls for that frame.
+ *
+ * @return ESP_OK on success, ESP_ERR_INVALID_STATE if not initialized.
+ */
+esp_err_t sim_display_swap(void);
 
 #ifdef __cplusplus
 }

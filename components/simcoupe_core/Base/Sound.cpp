@@ -92,6 +92,11 @@ void Sound::FrameUpdate()
 
     auto buffer_level = Audio::AddData(pbSampleBuffer, nSize);
 
+#ifndef ESP_PLATFORM
+    // On desktop, use sleep_until to pace the emulation when audiosync is off.
+    // On ESP32 the I2S DMA write (portMAX_DELAY) already acts as the master
+    // clock — sleep_until uses vTaskDelay (10 ms tick resolution) and causes
+    // regular vibrato artefacts in the audio output.
     using namespace std::chrono;
     static high_resolution_clock::time_point frame_time;
     auto one_frame = duration_cast<microseconds>(
@@ -109,6 +114,7 @@ void Sound::FrameUpdate()
         frame_time += duration_cast<microseconds>(one_frame * scale);
         std::this_thread::sleep_until(frame_time);
     }
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////

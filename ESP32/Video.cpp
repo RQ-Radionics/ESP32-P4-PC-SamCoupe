@@ -234,9 +234,10 @@ void ESP32Video::Update(const FrameBuffer& fb)
                 *p++ = e.r; *p++ = e.g; *p++ = e.b;
             }
         }
-        // Flush active GUI area (full rows — includes left/right padding columns)
+        // Flush active GUI area then present the frame.
         sim_display_flush_region((size_t)OFF_Y * DST_STRIDE,
                                  (size_t)rows * DST_STRIDE);
+        sim_display_swap();
     }
     else
     {
@@ -297,6 +298,10 @@ void ESP32Video::Update(const FrameBuffer& fb)
             sim_display_flush_region((size_t)disp_first * DST_STRIDE,
                                      (size_t)(disp_last - disp_first) * DST_STRIDE);
         }
+        // Swap once per frame — present back buffer regardless of dirty count.
+        // (On a fully static frame with no dirty lines the display content is
+        //  unchanged, but we still swap so s_back_buf stays in sync.)
+        sim_display_swap();
         if (vdiag) {
             vt2 = esp_timer_get_time();
             ESP_LOGI(TAG, "video frame %d: expand=%lld us  copy2psram=%lld us  flush=%lld us  total=%lld us",
