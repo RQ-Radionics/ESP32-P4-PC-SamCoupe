@@ -19,13 +19,15 @@ CONFIG_LCD_DSI_ISR_CACHE_SAFE=y
 CONFIG_PARTITION_TABLE_CUSTOM=y
 CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
 
-# ── Chip: Olimex ESP32-P4-PC — silicon rev 3.x (hw_ver3) ─────────────────
-# ESP32P4_REV_MIN_301 is the default in IDF v5.5+ for rev-3 silicon.
-# Do NOT set ESP32P4_SELECTS_REV_LESS_V3 or ESP32P4_REV_MIN_1 — those are
-# for pre-production rev-0/1 silicon and cause "missing hp_sys_clkrst_struct.h"
-# on IDF v5.5.3 because hw_ver1 headers are not included for rev-3 chips.
-CONFIG_ESP32P4_REV_MIN_301=y
-CONFIG_ESP32P4_REV_MIN_FULL=301
+# ── Chip: Olimex ESP32-P4-PC — silicon rev 1.x (hw_ver1) ─────────────────
+# ESP32P4_SELECTS_REV_LESS_V3=y unlocks the rev-0/1 choices in the
+# ESP32P4_REV_MIN choice (they depend on this symbol).
+# ESP32P4_REV_MIN_100 = "Rev v1.0" (FULL=100) — correct for rev-1.x silicon.
+# Without SELECTS_REV_LESS_V3, IDF defaults to rev-3.x and selects hw_ver3
+# headers, causing "missing hp_sys_clkrst_struct.h" on rev-1 hardware.
+CONFIG_ESP32P4_SELECTS_REV_LESS_V3=y
+CONFIG_ESP32P4_REV_MIN_100=y
+CONFIG_ESP32P4_REV_MIN_FULL=100
 
 # ── Flash: 16 MB ──────────────────────────────────────────────────────────
 CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y
