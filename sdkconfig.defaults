@@ -135,20 +135,22 @@ CONFIG_SIM_DISPLAY_HPD_GPIO=15
 CONFIG_SIM_DISPLAY_HDMI_MODE=y
 CONFIG_SIM_DISPLAY_DSI_LANES=2
 CONFIG_SIM_DISPLAY_DSI_LANE_MBPS=400
-# 640×480@71Hz: pclk=30MHz (PLL_F240M/8 exact)
-# VESA 640x480@75Hz timings (htotal=840, vtotal=500) with pclk=30MHz:
-#   fps = 30e6 / (840*500) = 71.4 Hz
-# The SAM Coupé runs at 50Hz driven by I2S audiosync — monitor refresh
-# rate only needs to be fast enough to not drop frames.
+# 512×480@71Hz: pclk=30MHz (PLL_F240M/8 exact)
+# SAM active area is exactly 512px wide — no horizontal padding needed.
+# htotal kept at 840 (same as 640×480) by moving the 128 saved pixels
+# into HBP (120+128=248), preserving pixel clock and line frequency.
+#   htotal = 512+64+16+248 = 840
+#   fps = 30e6 / (840*500) = 71.4 Hz (unchanged)
+# Vertical: 384 active (192 SAM lines × 2) centred in 480 → 48px top/bottom pad.
 # lane_mbps >= pclk*24/num_lanes = 30*24/2 = 360 → use 400 Mbps.
 # SETTLE=0x04: Linux kernel uses 0x04 for vactive<=600.
 # DDS_0/1/2: chip-internal constants, same for all resolutions.
-CONFIG_SIM_DISPLAY_HACT=640
+CONFIG_SIM_DISPLAY_HACT=512
 CONFIG_SIM_DISPLAY_VACT=480
 CONFIG_SIM_DISPLAY_PCLK_MHZ=30
 CONFIG_SIM_DISPLAY_HS=64
 CONFIG_SIM_DISPLAY_HFP=16
-CONFIG_SIM_DISPLAY_HBP=120
+CONFIG_SIM_DISPLAY_HBP=248
 CONFIG_SIM_DISPLAY_VS=3
 CONFIG_SIM_DISPLAY_VFP=1
 CONFIG_SIM_DISPLAY_VBP=16
