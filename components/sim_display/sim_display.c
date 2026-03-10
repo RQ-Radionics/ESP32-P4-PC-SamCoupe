@@ -167,7 +167,7 @@ esp_err_t sim_display_init(void)
         .dpi_clk_src         = MIPI_DSI_DPI_CLK_SRC_DEFAULT,   /* PLL_F240M */
         .dpi_clock_freq_mhz  = CONFIG_SIM_DISPLAY_PCLK_MHZ,
         .pixel_format        = LCD_COLOR_PIXEL_FORMAT_RGB888,
-        .num_fbs             = 2,
+        .num_fbs             = 1,  /* single buffer — no swap needed with dirty-line rendering */
         .video_timing = {
             .h_size            = CONFIG_SIM_DISPLAY_HACT,
             .v_size            = CONFIG_SIM_DISPLAY_VACT,
@@ -196,33 +196,19 @@ esp_err_t sim_display_init(void)
      * start as zero in the cache, but the DMA reads physical PSRAM which may
      * still contain stale data.  Flush cache → PSRAM before panel enable. */
     ESP_LOGI(TAG, "step 5 — clear framebuffers + panel enable");
-    if (esp_lcd_dpi_panel_get_frame_buffer(s_panel, 2, &s_fb[0], &s_fb[1]) == ESP_OK) {
+    if (esp_lcd_dpi_panel_get_frame_buffer(s_panel, 1, &s_fb[0]) == ESP_OK) {
         size_t fb_size = CONFIG_SIM_DISPLAY_HACT * CONFIG_SIM_DISPLAY_VACT * 3;  /* RGB888 */
-        for (int i = 0; i < 2; i++) {
-            if (s_fb[i]) {
-                memset(s_fb[i], 0, fb_size);
-                esp_cache_msync(s_fb[i], fb_size, ESP_CACHE_MSYNC_FLAG_DIR_C2M);
-            }
+        if (s_fb[0]) {
+            memset(s_fb[0], 0, fb_size);
+            esp_cache_msync(s_fb[0], fb_size, ESP_CACHE_MSYNC_FLAG_DIR_C2M);
         }
     }
+    s_fb[1] = NULL;
 
     esp_lcd_panel_init(s_panel);
     esp_lcd_panel_disp_on_off(s_panel, true);
 
-    /* Verify dpi_set_cur_fb offset at runtime (after init sets cur_fb_index=0).
-     * num_fbs must be 2; cur_fb_index must be 0.  If num_fbs != 2 the struct
-     * layout has changed and the offset constant must be updated. */
-    {
-        uintptr_t base = (uintptr_t)s_panel;
-        size_t off = 11 * sizeof(void *) + sizeof(void *) + 1;  /* = 49 on RV32 */
-        uint8_t cur = *(volatile uint8_t *)(base + off);
-        uint8_t nfb = *(volatile uint8_t *)(base + off + 1);  /* num_fbs */
-        ESP_LOGI(TAG, "dpi_set_cur_fb: offset=%zu cur_fb_index=%u num_fbs=%u",
-                 off, cur, nfb);
-        if (nfb != 2) {
-            ESP_LOGW(TAG, "num_fbs=%u (expected 2) — dpi_set_cur_fb offset may be wrong!", nfb);
-        }
-    }
+    ESP_LOGI(TAG, "single framebuffer at %p", s_fb[0]);
 
     /* Read LT8912B diagnostic regs to confirm DSI is active */
     esp_lcd_lt8912b_post_dpi_enable();
@@ -257,37 +243,15 @@ void *sim_display_get_back_buffer(void)
 esp_err_t sim_display_flush(void)
 {
     if (!s_panel) return ESP_ERR_INVALID_STATE;
-
-    /* Flush cache of back buffer to PSRAM so DPI DMA sees the new pixels.
-     * Use only DIR_C2M (writeback without invalidate) — same as the reference
-     * esp32-mos project.  Adding TYPE_DATA or UNALIGNED causes the cache
-     * subsystem to invalidate adjacent PSRAM cache lines, corrupting USB host,
-     * FAT VFS, and other objects allocated in PSRAM. */
     size_t fb_size = CONFIG_SIM_DISPLAY_HACT * CONFIG_SIM_DISPLAY_VACT * 3;
-    esp_cache_msync(s_fb[s_back_buf], fb_size, ESP_CACHE_MSYNC_FLAG_DIR_C2M);
-
-    /* Tell the DPI panel to display the buffer we just wrote.
-     * Write cur_fb_index directly (atomic byte store) — do NOT call
-     * esp_lcd_panel_draw_bitmap(), which reprograms the DW-GDMA channel
-     * from task context and races with the DMA ISR → Load access fault. */
-    dpi_set_cur_fb(s_panel, (uint8_t)s_back_buf);
-
-    /* Swap: the back buffer becomes the front, the front becomes the back */
-    s_back_buf ^= 1;
+    esp_cache_msync(s_fb[0], fb_size, ESP_CACHE_MSYNC_FLAG_DIR_C2M);
     return ESP_OK;
 }
 
 esp_err_t sim_display_flush_region(size_t byte_offset, size_t byte_size)
 {
     if (!s_panel) return ESP_ERR_INVALID_STATE;
-
-    /* NO swap: dirty-line tracking writes incrementally to the same buffer.
-     * Swapping would give us a stale back buffer missing all previous frames.
-     * We always render into s_fb[s_back_buf] (fixed) and the DPI DMA reads
-     * the other buffer.  No tearing: SAM runs at 50fps, DPI scans at 60fps. */
-    uint8_t *base = (uint8_t *)s_fb[s_back_buf];
+    uint8_t *base = (uint8_t *)s_fb[0];
     esp_cache_msync(base + byte_offset, byte_size, ESP_CACHE_MSYNC_FLAG_DIR_C2M);
-
-    dpi_set_cur_fb(s_panel, (uint8_t)s_back_buf);
     return ESP_OK;
 }

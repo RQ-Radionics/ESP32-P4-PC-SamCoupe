@@ -296,8 +296,6 @@ void ESP32Video::Update(const FrameBuffer& fb)
         if (vdiag) vt1 = esp_timer_get_time();
         if (first_dirty >= 0)
         {
-            // Display rows: dy0(first_dirty) .. dy1(last_dirty)+1
-            // = [OFF_Y + first_dirty*2 .. OFF_Y + last_dirty*2 + 2)
             int disp_first = OFF_Y + first_dirty * 2;
             int disp_last  = OFF_Y + last_dirty  * 2 + 2;  // exclusive
             sim_display_flush_region((size_t)disp_first * DST_STRIDE,
