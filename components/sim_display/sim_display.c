@@ -161,8 +161,12 @@ esp_err_t sim_display_init(void)
         .flags.disable_lp    = true,
     };
 
-    /* Step 5: Video timing for LT8912B */
+    /* Step 5: Video timing for LT8912B — matches factory firmware exactly.
+     * vic=2 causes the monitor to report 60Hz (frame doubling in LT8912B or monitor).
+     * aspect_ratio=0 (no data), as found in factory firmware dump. */
     esp_lcd_panel_lt8912b_video_timing_t video_timing = ESP_LCD_LT8912B_VIDEO_TIMING_1920x1080_30Hz();
+    video_timing.vic         = 2;
+    video_timing.aspect_ratio = 0;
 
     /* Step 6: Vendor config */
     lt8912b_vendor_config_t vendor_cfg = {
