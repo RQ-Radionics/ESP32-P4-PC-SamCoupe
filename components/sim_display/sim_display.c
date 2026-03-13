@@ -218,8 +218,24 @@ esp_err_t sim_display_init(void)
     }
     ESP_LOGI(TAG, "step 10 OK");
 
-    /* Check HPD */
-    bool connected = esp_lcd_panel_lt8912b_is_ready(s_panel);
+    /* Step 11: Wait for DPI signal to stabilise, then re-trigger LT8912B input detection.
+     *
+     * panel_lt8912b_init() calls detect_input BEFORE the DPI is active (it sees 0xff/0xff).
+     * After lt8912b->init(panel) starts the DPI, the LT8912B needs to re-lock to the signal.
+     * esp_lcd_panel_lt8912b_is_ready() calls detect_input + checks HPD — calling it repeatedly
+     * gives the chip time to lock and re-programs the video setup with the live signal. */
+    ESP_LOGI(TAG, "step 11 — waiting for LT8912B to lock to DPI signal...");
+    bool connected = false;
+    for (int i = 0; i < 20; i++) {
+        vTaskDelay(pdMS_TO_TICKS(100));
+        connected = esp_lcd_panel_lt8912b_is_ready(s_panel);
+        if (connected) {
+            ESP_LOGI(TAG, "  locked after %d ms", (i + 1) * 100);
+            break;
+        }
+    }
+    ESP_LOGI(TAG, "step 11 OK");
+
     ESP_LOGI(TAG, "%dx%d@%dMHz ready%s",
              CONFIG_SIM_DISPLAY_HACT, CONFIG_SIM_DISPLAY_VACT, CONFIG_SIM_DISPLAY_PCLK_MHZ,
              connected ? " (cable connected)" : " (no cable)");
