@@ -170,15 +170,15 @@ esp_err_t sim_display_init(void)
         .flags.disable_lp    = true,
     };
 
-    /* Step 5: Video timing for LT8912B — 1920x1080 with frame-doubling.
+    /* Step 5: Video timing for LT8912B — 1920×1080@60Hz.
      *
-     * DPI pixel clock = 60MHz (PLL_F240M/4, exact → IDF 5.5.3 brg_comp=0).
-     * LT8912B uses pclk_mhz to configure its DDS (MIPI RX lock frequency).
-     * pclk_mhz must match the DPI clock we actually send (60MHz), NOT the
-     * HDMI output clock (120MHz).  The LT8912B frame-doubles internally:
-     * it receives ~26Hz DPI frames and outputs 60Hz HDMI to the monitor.
+     * pclk_mhz=64 matches the Olimex factory firmware.
+     * Actual DPI hardware clock = PLL_F240M/4 = 60MHz (closest achievable).
+     * IDF uses expect=64MHz for host lane-clock ratio → host_hact=3750 ✓
+     * The LT8912B MIPI RX locks to the live signal and outputs HDMI 60Hz.
+     * No frame-doubling — the LT8912B PLL generates the HDMI clock independently.
      *
-     * htotal/vtotal/blanking match the 1080p@60Hz macro but pclk_mhz=60. */
+     * IDF 5.5.3 brg_comp removed via patched mipi_dsi_hal.c (see sdkconfig.defaults). */
     esp_lcd_panel_lt8912b_video_timing_t video_timing = {
         .hfp        = 48,
         .hs         = 32,
@@ -194,7 +194,7 @@ esp_err_t sim_display_init(void)
         .v_polarity = 0,
         .vic        = 0,
         .aspect_ratio = LT8912B_ASPECT_RATION_16_9,
-        .pclk_mhz   = CONFIG_SIM_DISPLAY_PCLK_MHZ,  /* 60 — must match DPI clock */
+        .pclk_mhz   = CONFIG_SIM_DISPLAY_PCLK_MHZ,  /* 64 — matches factory firmware */
     };
 
     /* Step 6: Vendor config */
@@ -214,7 +214,7 @@ esp_err_t sim_display_init(void)
     };
 
     /* Step 8: Create LT8912B panel (wraps DPI panel) */
-    ESP_LOGI(TAG, "step 4-8 — esp_lcd_new_panel_lt8912b @ %dx%d pclk=%dMHz (DPI ~26Hz, HDMI 60Hz via frame-double)",
+    ESP_LOGI(TAG, "step 4-8 — esp_lcd_new_panel_lt8912b @ %dx%d pclk=%dMHz (DPI 60MHz actual, HDMI 60Hz)",
              CONFIG_SIM_DISPLAY_HACT, CONFIG_SIM_DISPLAY_VACT, CONFIG_SIM_DISPLAY_PCLK_MHZ);
     esp_lcd_panel_lt8912b_io_t io_all = {
         .main    = io_main,
