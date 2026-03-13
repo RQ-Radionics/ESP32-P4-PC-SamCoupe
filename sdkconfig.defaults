@@ -59,11 +59,6 @@ CONFIG_ESP_MAIN_TASK_STACK_SIZE=8192
 # sys_evt task needs extra room with PSRAM/logging overhead
 CONFIG_ESP_SYSTEM_EVENT_TASK_STACK_SIZE=4096
 
-# ── CPU frequency ─────────────────────────────────────────────────────────
-# Match Olimex production BSP: 360MHz (not the IDF default which may be lower)
-CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ_360=y
-CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ=360
-
 # ── Compiler optimisation ─────────────────────────────────────────────────
 # Use -O2 globally (performance mode). The default DEBUG mode uses -Og which
 # is far too slow for Z80 emulation. simcoupe_core also sets -O2 explicitly
@@ -144,33 +139,28 @@ CONFIG_SIM_DISPLAY_SCL_GPIO=8
 CONFIG_SIM_DISPLAY_HPD_GPIO=15
 CONFIG_SIM_DISPLAY_HDMI_MODE=y
 CONFIG_SIM_DISPLAY_DSI_LANES=2
+# 720p@60Hz: pclk=64MHz × 24bpp = 1536Mbps total / 2 lanes = 768Mbps.
+# Well within ESP32-P4 PHY limit of 1500Mbps/lane.
 CONFIG_SIM_DISPLAY_DSI_LANE_MBPS=1000
-# 1920×1080@60Hz via LT8912B (MIPI DSI → HDMI).
-#
-# pclk=64MHz matches the Olimex factory firmware.
-# PLL_F240M/4 = 60MHz actual hardware DPI clock (closest achievable).
-# IDF uses expect=64MHz for host lane-clock ratio → host_hact=3750 lane-clocks ✓
-# (same as factory firmware with IDF 5.5.1).
-#
-# pclk=60MHz = PLL_F240M/4 exactly → IDF 5.5.3 brg_comp=0 (real==expect).
-# host_hact = 1920 * (1000/60/8) = 4000 lane-clocks.
-# bridge_htotal = 2080 (no compensation since real==expect).
-#
-# Lane rate: 1000Mbps/lane × 2 lanes = 2000Mbps total.
-# SAM 512×192 scaled 3×H 5×V → 1536×960, centred in 1920×1080. OFF_X=192, OFF_Y=60.
-# Framebuffer: 1920×1080×3 = 6.22MB in PSRAM.
-CONFIG_SIM_DISPLAY_HACT=1920
-CONFIG_SIM_DISPLAY_VACT=1080
-CONFIG_SIM_DISPLAY_PCLK_MHZ=60
+# 1280×720@60Hz — timings copied exactly from Olimex production test.
+# pclk=64MHz (PLL_F256M/4 exact) → 59.98Hz.
+# SETTLE=0x08 for vactive<=720.
+# SAM 512×192 scaled 2×H 3×V → 1024×576 centred. OFF_X=128, OFF_Y=72.
+# Framebuffer: 1280×720×3 = 2.76MB.
+CONFIG_SIM_DISPLAY_HACT=1280
+CONFIG_SIM_DISPLAY_VACT=720
+CONFIG_SIM_DISPLAY_PCLK_MHZ=64
 CONFIG_SIM_DISPLAY_HS=32
 CONFIG_SIM_DISPLAY_HFP=48
 CONFIG_SIM_DISPLAY_HBP=80
 CONFIG_SIM_DISPLAY_VS=5
 CONFIG_SIM_DISPLAY_VFP=3
-CONFIG_SIM_DISPLAY_VBP=19
+CONFIG_SIM_DISPLAY_VBP=13
 CONFIG_SIM_DISPLAY_HSYNC_POL=1
 CONFIG_SIM_DISPLAY_VSYNC_POL=0
 CONFIG_SIM_DISPLAY_SETTLE=0x08
-CONFIG_SIM_DISPLAY_DDS_0=0x93
-CONFIG_SIM_DISPLAY_DDS_1=0x3E
-CONFIG_SIM_DISPLAY_DDS_2=0x29
+# DDS strm_sw_freq_word = pclk_mhz * 0x16C16 (Espressif formula)
+# pclk=64MHz: 64 * 0x16C16 = 0x5B0580 -> 4E=0x80 4F=0x05 50=0x5B
+CONFIG_SIM_DISPLAY_DDS_0=0x80
+CONFIG_SIM_DISPLAY_DDS_1=0x05
+CONFIG_SIM_DISPLAY_DDS_2=0x5B

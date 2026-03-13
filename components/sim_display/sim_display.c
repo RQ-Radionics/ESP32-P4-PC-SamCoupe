@@ -1,10 +1,9 @@
 /*
  * sim_display.c — HDMI display driver for SimCoupe (Olimex ESP32-P4-PC)
  *
- * Uses the production LT8912B driver architecture:
- *   - Three I2C panel IOs (main=0x48, cec_dsi=0x49, avi=0x4A)
- *   - esp_lcd_new_panel_lt8912b() — standard ESP-LCD panel interface
- *   - esp_lcd_panel_reset() + esp_lcd_panel_init() — full production init sequence
+ * Wraps the LT8912B MIPI DSI → HDMI bridge initialization sequence,
+ * extracted from esp32-mos/main/main.c hdmi_init() and adapted as a
+ * standalone ESP-IDF component.
  *
  * Hardware:
  *   MIPI DSI: 2-lane, CONFIG_SIM_DISPLAY_DSI_LANE_MBPS Mbps
@@ -19,12 +18,10 @@
 #include "freertos/task.h"
 #include "esp_log.h"
 #include "esp_err.h"
-#include "esp_check.h"
 #include "esp_ldo_regulator.h"
 #include "esp_cache.h"
 #include "driver/i2c_master.h"
 #include "esp_lcd_panel_ops.h"
-#include "esp_lcd_panel_io.h"
 #include "esp_lcd_mipi_dsi.h"
 #include "esp_lcd_lt8912b.h"
 #include <string.h>
@@ -32,12 +29,17 @@
 static const char *TAG = "sim_display";
 static esp_lcd_panel_handle_t s_panel    = NULL;
 static i2c_master_bus_handle_t s_i2c_bus = NULL;
-static esp_lcd_panel_io_handle_t s_io_main = NULL;  /* LT8912B main I2C IO (0x48) */
 static void *s_fb[2]  = {NULL, NULL};
 static int   s_back_buf = 1;  /* index of back buffer (the one we write to) */
 
 /* Switch the DPI panel's active (front) framebuffer by writing cur_fb_index
  * directly into the panel struct.
+ *
+ * WHY NOT esp_lcd_panel_draw_bitmap():
+ *   draw_bitmap fires on_color_trans_done from task context, which reprograms
+ *   the DW-GDMA channel while the ISR may be reading it → Load access fault in
+ *   dw_gdma_channel_default_isr (MTVAL=0x188, dev=0x0).  This is the exact
+ *   crash seen on first Video::Update() call.
  *
  * Layout of esp_lcd_dpi_panel_t (esp_lcd_panel_dpi.c, IDF 5.5.x, RV32):
  *   struct esp_lcd_panel_t base:
@@ -64,11 +66,14 @@ esp_err_t sim_display_init(void)
 {
     if (s_panel) return ESP_ERR_INVALID_STATE;
 
-    /* Step 0: Power on MIPI DSI PHY via internal LDO regulator (LDO_VO3 → 2500 mV). */
+    /* Step 0: Power on MIPI DSI PHY via internal LDO regulator (LDO_VO3 → 2500 mV).
+     * The DSI PHY requires VDD_MIPI_DPHY = 2.5V to start up.  Without this
+     * the PHY PLL never locks and esp_lcd_new_dsi_bus() hangs indefinitely.
+     * The LDO handle is kept alive for the lifetime of the application. */
     {
         esp_ldo_channel_handle_t ldo_dphy = NULL;
         esp_ldo_channel_config_t ldo_cfg = {
-            .chan_id    = 3,
+            .chan_id    = 3,      /* LDO_VO3 → VDD_MIPI_DPHY on ESP32-P4 devkits */
             .voltage_mv = 2500,
         };
         esp_err_t ldo_ret = esp_ldo_acquire_channel(&ldo_cfg, &ldo_dphy);
@@ -89,11 +94,27 @@ esp_err_t sim_display_init(void)
         .phy_clk_src        = MIPI_DSI_PHY_CLK_SRC_DEFAULT,
         .lane_bit_rate_mbps = CONFIG_SIM_DISPLAY_DSI_LANE_MBPS,
     };
-    ESP_RETURN_ON_ERROR(esp_lcd_new_dsi_bus(&bus_cfg, &dsi_bus), TAG, "DSI bus init failed");
+    if (esp_lcd_new_dsi_bus(&bus_cfg, &dsi_bus) != ESP_OK) {
+        ESP_LOGE(TAG, "DSI bus init failed");
+        return ESP_FAIL;
+    }
     ESP_LOGI(TAG, "step 1 OK");
 
-    /* Step 2: Create shared I2C bus */
-    ESP_LOGI(TAG, "step 2 — shared I2C bus");
+    /* Step 2: Patch — disable EoTP (LT8912B cannot handle it) */
+    ESP_LOGI(TAG, "step 2 — EoTP patch");
+    if (esp_lcd_lt8912b_patch_dsi_eotp(dsi_bus) != ESP_OK) {
+        ESP_LOGE(TAG, "EoTP patch failed");
+        esp_lcd_del_dsi_bus(dsi_bus);
+        return ESP_FAIL;
+    }
+    ESP_LOGI(TAG, "step 2 OK");
+
+    /* Step 3: Create shared I2C bus (ES8311 audio codec and LT8912B both live
+     * on this bus — GPIO7/SDA, GPIO8/SCL, 400 kHz, I2C port CONFIG_SIM_DISPLAY_I2C_PORT).
+     * Creating it here, before any driver touches I2C, guarantees a clean FSM state.
+     * Both esp_lcd_lt8912b_init_with_bus() and sim_audio_init_with_bus() add their
+     * devices to this same handle without fighting over bus ownership. */
+    ESP_LOGI(TAG, "step 3 — shared I2C bus + LT8912B init");
     {
         i2c_master_bus_config_t bus_cfg_i2c = {
             .i2c_port            = CONFIG_SIM_DISPLAY_I2C_PORT,
@@ -119,30 +140,15 @@ esp_err_t sim_display_init(void)
             }
         }
     }
-    ESP_LOGI(TAG, "step 2 OK");
 
-    /* Step 3: Create three I2C panel IOs for LT8912B (main, cec_dsi, avi) */
-    ESP_LOGI(TAG, "step 3 — LT8912B I2C panel IOs");
-    esp_lcd_panel_io_handle_t io_main    = NULL;
-    esp_lcd_panel_io_handle_t io_cec_dsi = NULL;
-    esp_lcd_panel_io_handle_t io_avi     = NULL;
-
-    esp_lcd_panel_io_i2c_config_t io_cfg_main = LT8912B_IO_CFG(400 * 1000, LT8912B_IO_I2C_MAIN_ADDRESS);
-    esp_lcd_panel_io_i2c_config_t io_cfg_cec  = LT8912B_IO_CFG(400 * 1000, LT8912B_IO_I2C_CEC_ADDRESS);
-    esp_lcd_panel_io_i2c_config_t io_cfg_avi  = LT8912B_IO_CFG(400 * 1000, LT8912B_IO_I2C_AVI_ADDRESS);
-
-    if (esp_lcd_new_panel_io_i2c(s_i2c_bus, &io_cfg_main, &s_io_main) != ESP_OK) {
-        ESP_LOGE(TAG, "LT8912B main panel IO creation failed");
-        i2c_del_master_bus(s_i2c_bus);
-        s_i2c_bus = NULL;
-        esp_lcd_del_dsi_bus(dsi_bus);
-        return ESP_FAIL;
-    }
-    io_main = s_io_main;
-
-    if (esp_lcd_new_panel_io_i2c(s_i2c_bus, &io_cfg_cec,  &io_cec_dsi) != ESP_OK ||
-        esp_lcd_new_panel_io_i2c(s_i2c_bus, &io_cfg_avi,  &io_avi) != ESP_OK) {
-        ESP_LOGE(TAG, "LT8912B panel IO creation failed");
+    /* Initialize LT8912B using the shared bus handle (does NOT own the bus) */
+    esp_lcd_lt8912b_config_t lt_cfg = {
+        .hpd_gpio  = CONFIG_SIM_DISPLAY_HPD_GPIO,
+        .hdmi_mode = CONFIG_SIM_DISPLAY_HDMI_MODE,
+        /* i2c_port / sda_gpio / scl_gpio ignored by init_with_bus */
+    };
+    if (esp_lcd_lt8912b_init_with_bus(s_i2c_bus, &lt_cfg) != ESP_OK) {
+        ESP_LOGE(TAG, "LT8912B I2C init failed");
         i2c_del_master_bus(s_i2c_bus);
         s_i2c_bus = NULL;
         esp_lcd_del_dsi_bus(dsi_bus);
@@ -150,12 +156,17 @@ esp_err_t sim_display_init(void)
     }
     ESP_LOGI(TAG, "step 3 OK");
 
-    /* Step 4: DPI panel config */
+    /* Step 4: Create DPI panel — feeds pixel data from ESP32-P4 to LT8912B DSI input.
+     * Clock source = DEFAULT (PLL_F240M), 64 MHz for reduced-blanking 720p@60Hz.
+     * These timings are validated by the Olimex production test and work on all
+     * tested monitors via the LT8912B bridge.
+     * num_fbs=2: double-buffered so SimCoupe renders to back buffer
+     *            while DPI DMA reads the front buffer.
+     * disable_lp=1: stay in HS mode during blanking (required for video mode). */
     esp_lcd_dpi_panel_config_t dpi_cfg = {
         .dpi_clk_src         = MIPI_DSI_DPI_CLK_SRC_DEFAULT,
         .dpi_clock_freq_mhz  = CONFIG_SIM_DISPLAY_PCLK_MHZ,
-        .virtual_channel     = 0,
-        .in_color_format     = LCD_COLOR_PIXEL_FORMAT_RGB888,
+        .pixel_format        = LCD_COLOR_PIXEL_FORMAT_RGB888,
         .num_fbs             = 2,
         .video_timing = {
             .h_size            = CONFIG_SIM_DISPLAY_HACT,
@@ -167,78 +178,26 @@ esp_err_t sim_display_init(void)
             .vsync_back_porch  = CONFIG_SIM_DISPLAY_VBP,
             .vsync_front_porch = CONFIG_SIM_DISPLAY_VFP,
         },
-        .flags.disable_lp    = true,
+        .flags.disable_lp    = 1,
     };
-
-    /* Step 5: Video timing for LT8912B — 1920×1080@60Hz.
-     *
-     * pclk_mhz=60: PLL_F240M/4 = 60MHz exactly → IDF 5.5.3 brg_comp=0 (real==expect).
-     * host_hact = 1920 * (1000/60/8) = 4000 lane-clocks.
-     * bridge_htotal = 2080 (no compensation).
-     * The LT8912B MIPI RX locks to the live 60MHz DPI and outputs HDMI 60Hz. */
-    esp_lcd_panel_lt8912b_video_timing_t video_timing = {
-        .hfp        = 48,
-        .hs         = 32,
-        .hbp        = 80,
-        .hact       = 1920,
-        .htotal     = 2080,
-        .vfp        = 3,
-        .vs         = 5,
-        .vbp        = 19,
-        .vact       = 1080,
-        .vtotal     = 1107,
-        .h_polarity = 1,
-        .v_polarity = 0,
-        .vic        = 0,
-        .aspect_ratio = LT8912B_ASPECT_RATION_16_9,
-        .pclk_mhz   = CONFIG_SIM_DISPLAY_PCLK_MHZ,  /* 64 — matches factory firmware */
-    };
-
-    /* Step 6: Vendor config */
-    lt8912b_vendor_config_t vendor_cfg = {
-        .video_timing = video_timing,
-        .mipi_config = {
-            .dsi_bus    = dsi_bus,
-            .dpi_config = &dpi_cfg,
-            .lane_num   = CONFIG_SIM_DISPLAY_DSI_LANES,
-        },
-    };
-
-    /* Step 7: Panel device config */
-    esp_lcd_panel_dev_config_t panel_cfg = {
-        .reset_gpio_num = CONFIG_SIM_DISPLAY_HPD_GPIO >= 0 ? -1 : -1,  /* no reset GPIO */
-        .vendor_config  = &vendor_cfg,
-    };
-
-    /* Step 8: Create LT8912B panel (wraps DPI panel) */
-    ESP_LOGI(TAG, "step 4-8 — esp_lcd_new_panel_lt8912b @ %dx%d pclk=%dMHz (DPI 60MHz actual, HDMI 60Hz)",
-             CONFIG_SIM_DISPLAY_HACT, CONFIG_SIM_DISPLAY_VACT, CONFIG_SIM_DISPLAY_PCLK_MHZ);
-    esp_lcd_panel_lt8912b_io_t io_all = {
-        .main    = io_main,
-        .cec_dsi = io_cec_dsi,
-        .avi     = io_avi,
-    };
-    if (esp_lcd_new_panel_lt8912b(&io_all, &panel_cfg, &s_panel) != ESP_OK) {
-        ESP_LOGE(TAG, "esp_lcd_new_panel_lt8912b failed");
-        esp_lcd_panel_io_del(io_avi);
-        esp_lcd_panel_io_del(io_cec_dsi);
-        esp_lcd_panel_io_del(io_main);
+    ESP_LOGI(TAG, "step 4 — DPI panel create @ %d MHz (PLL_DEFAULT)", CONFIG_SIM_DISPLAY_PCLK_MHZ);
+    if (esp_lcd_new_panel_dpi(dsi_bus, &dpi_cfg, &s_panel) != ESP_OK) {
+        ESP_LOGE(TAG, "DPI panel init failed");
+        esp_lcd_lt8912b_deinit();
         i2c_del_master_bus(s_i2c_bus);
         s_i2c_bus = NULL;
         esp_lcd_del_dsi_bus(dsi_bus);
         return ESP_FAIL;
     }
+    ESP_LOGI(TAG, "step 4 OK");
 
-    /* Step 9: Reset + Init — this triggers the full LT8912B init sequence */
-    ESP_LOGI(TAG, "step 9 — panel reset + init");
-    esp_lcd_panel_reset(s_panel);
-    esp_lcd_panel_init(s_panel);
-    ESP_LOGI(TAG, "step 9 OK");
-
-    /* Step 10: Get framebuffer pointers, clear to black, flush cache → PSRAM */
-    ESP_LOGI(TAG, "step 10 — clear framebuffers");
+    /* Step 5: Get framebuffer pointers, clear to black, enable panel.
+     * The IDF allocates framebuffers with calloc (heap_caps_calloc) so they
+     * start as zero in the cache, but the DMA reads physical PSRAM which may
+     * still contain stale data.  Flush cache → PSRAM before panel enable. */
+    ESP_LOGI(TAG, "step 5 — clear framebuffers + panel enable");
     if (esp_lcd_dpi_panel_get_frame_buffer(s_panel, 2, &s_fb[0], &s_fb[1]) == ESP_OK) {
-        size_t fb_size = CONFIG_SIM_DISPLAY_HACT * CONFIG_SIM_DISPLAY_VACT * 3;
+        size_t fb_size = CONFIG_SIM_DISPLAY_HACT * CONFIG_SIM_DISPLAY_VACT * 3;  /* RGB888 */
         for (int i = 0; i < 2; i++) {
             if (s_fb[i]) {
                 memset(s_fb[i], 0, fb_size);
@@ -246,18 +205,19 @@ esp_err_t sim_display_init(void)
             }
         }
     }
-    ESP_LOGI(TAG, "step 10 OK");
 
-    /* Step 11: HPD check — stabilization is now done inside panel_lt8912b_init()
-     * (100ms delay + re-send video setup + re-detect MIPI + MIPI RX reset),
-     * matching the Olimex production firmware fix for IDF 5.5.3. */
-    ESP_LOGI(TAG, "step 11 — HPD check");
-    bool connected = esp_lcd_panel_lt8912b_is_ready(s_panel);
-    ESP_LOGI(TAG, "step 11 OK — HPD=%s", connected ? "connected" : "no cable");
+    esp_lcd_panel_init(s_panel);
+    esp_lcd_panel_disp_on_off(s_panel, true);
 
+    ESP_LOGI(TAG, "single framebuffer at %p", s_fb[0]);
+
+    /* Read LT8912B diagnostic regs to confirm DSI is active */
+    esp_lcd_lt8912b_post_dpi_enable();
+
+    ESP_LOGI(TAG, "step 5 OK");
     ESP_LOGI(TAG, "%dx%d@%dMHz ready%s",
              CONFIG_SIM_DISPLAY_HACT, CONFIG_SIM_DISPLAY_VACT, CONFIG_SIM_DISPLAY_PCLK_MHZ,
-             connected ? " (cable connected)" : " (no cable)");
+             esp_lcd_lt8912b_is_connected() ? " (cable connected)" : " (no cable)");
 
     return ESP_OK;
 }
@@ -294,6 +254,7 @@ esp_err_t sim_display_flush(void)
 esp_err_t sim_display_flush_region(size_t byte_offset, size_t byte_size)
 {
     if (!s_panel) return ESP_ERR_INVALID_STATE;
+    /* msync only — no swap. Call sim_display_swap() once after all regions. */
     uint8_t *base = (uint8_t *)s_fb[s_back_buf];
     esp_cache_msync(base + byte_offset, byte_size, ESP_CACHE_MSYNC_FLAG_DIR_C2M);
     return ESP_OK;
