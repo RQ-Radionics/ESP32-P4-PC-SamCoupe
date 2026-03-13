@@ -172,13 +172,10 @@ esp_err_t sim_display_init(void)
 
     /* Step 5: Video timing for LT8912B — 1920×1080@60Hz.
      *
-     * pclk_mhz=64 matches the Olimex factory firmware.
-     * Actual DPI hardware clock = PLL_F240M/4 = 60MHz (closest achievable).
-     * IDF uses expect=64MHz for host lane-clock ratio → host_hact=3750 ✓
-     * The LT8912B MIPI RX locks to the live signal and outputs HDMI 60Hz.
-     * No frame-doubling — the LT8912B PLL generates the HDMI clock independently.
-     *
-     * IDF 5.5.3 brg_comp removed via patched mipi_dsi_hal.c (see sdkconfig.defaults). */
+     * pclk_mhz=60: PLL_F240M/4 = 60MHz exactly → IDF 5.5.3 brg_comp=0 (real==expect).
+     * host_hact = 1920 * (1000/60/8) = 4000 lane-clocks.
+     * bridge_htotal = 2080 (no compensation).
+     * The LT8912B MIPI RX locks to the live 60MHz DPI and outputs HDMI 60Hz. */
     esp_lcd_panel_lt8912b_video_timing_t video_timing = {
         .hfp        = 48,
         .hs         = 32,
@@ -251,30 +248,10 @@ esp_err_t sim_display_init(void)
     }
     ESP_LOGI(TAG, "step 10 OK");
 
-    /* Step 11: MIPI RX logic reset after DPI is active.
-     *
-     * panel_lt8912b_init() runs the full init sequence but the DPI starts AFTER
-     * lt8912b->init(panel) is called at the very end. The MIPI RX reset inside
-     * panel_lt8912b_init() fires before the DPI is active (sees 0xff/0xff hsync).
-     * We must re-do the MIPI RX reset + DDS reset now that the DPI is running,
-     * so the LT8912B locks to the live signal and outputs valid HDMI timing.
-     *
-     * Registers (main I2C, 0x48):
-     *   0x03 = 0x7f → MIPI RX reset assert
-     *   0x03 = 0xff → MIPI RX reset deassert
-     *   0x05 = 0xfb → DDS reset assert
-     *   0x05 = 0xff → DDS reset deassert */
-    ESP_LOGI(TAG, "step 11 — MIPI RX + DDS reset after DPI active");
-    vTaskDelay(pdMS_TO_TICKS(50));  /* let DPI stabilise first */
-    esp_lcd_panel_io_tx_param(s_io_main, 0x03, (uint8_t[]){0x7f}, 1);
-    vTaskDelay(pdMS_TO_TICKS(10));
-    esp_lcd_panel_io_tx_param(s_io_main, 0x03, (uint8_t[]){0xff}, 1);
-    vTaskDelay(pdMS_TO_TICKS(10));
-    esp_lcd_panel_io_tx_param(s_io_main, 0x05, (uint8_t[]){0xfb}, 1);
-    vTaskDelay(pdMS_TO_TICKS(10));
-    esp_lcd_panel_io_tx_param(s_io_main, 0x05, (uint8_t[]){0xff}, 1);
-    vTaskDelay(pdMS_TO_TICKS(100));  /* wait for PLL to re-lock */
-
+    /* Step 11: HPD check — stabilization is now done inside panel_lt8912b_init()
+     * (100ms delay + re-send video setup + re-detect MIPI + MIPI RX reset),
+     * matching the Olimex production firmware fix for IDF 5.5.3. */
+    ESP_LOGI(TAG, "step 11 — HPD check");
     bool connected = esp_lcd_panel_lt8912b_is_ready(s_panel);
     ESP_LOGI(TAG, "step 11 OK — HPD=%s", connected ? "connected" : "no cable");
 

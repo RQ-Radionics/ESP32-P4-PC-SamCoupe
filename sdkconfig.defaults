@@ -152,17 +152,16 @@ CONFIG_SIM_DISPLAY_DSI_LANE_MBPS=1000
 # IDF uses expect=64MHz for host lane-clock ratio → host_hact=3750 lane-clocks ✓
 # (same as factory firmware with IDF 5.5.1).
 #
-# IDF 5.5.3 added brg_comp = round(real/expect × htotal) - htotal which gives
-# brg_comp=-130 with real=60/expect=64 → bridge htotal=1950 (broken).
-# Fix: patched /components/hal/mipi_dsi_hal.c to remove the compensation
-# (restores IDF 5.5.1 behaviour: bridge gets raw pixel-clock timings, no comp).
+# pclk=60MHz = PLL_F240M/4 exactly → IDF 5.5.3 brg_comp=0 (real==expect).
+# host_hact = 1920 * (1000/60/8) = 4000 lane-clocks.
+# bridge_htotal = 2080 (no compensation since real==expect).
 #
 # Lane rate: 1000Mbps/lane × 2 lanes = 2000Mbps total.
 # SAM 512×192 scaled 3×H 5×V → 1536×960, centred in 1920×1080. OFF_X=192, OFF_Y=60.
 # Framebuffer: 1920×1080×3 = 6.22MB in PSRAM.
 CONFIG_SIM_DISPLAY_HACT=1920
 CONFIG_SIM_DISPLAY_VACT=1080
-CONFIG_SIM_DISPLAY_PCLK_MHZ=64
+CONFIG_SIM_DISPLAY_PCLK_MHZ=60
 CONFIG_SIM_DISPLAY_HS=32
 CONFIG_SIM_DISPLAY_HFP=48
 CONFIG_SIM_DISPLAY_HBP=80

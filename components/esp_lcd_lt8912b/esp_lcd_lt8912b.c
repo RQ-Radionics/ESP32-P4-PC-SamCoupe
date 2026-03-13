@@ -657,6 +657,23 @@ static esp_err_t panel_lt8912b_init(esp_lcd_panel_t *panel)
 
     ESP_RETURN_ON_ERROR(lt8912b->init(panel), TAG, "init MIPI DPI panel failed");
 
+    /* IDF 5.5.3+: After the DPI panel is fully initialized (with its new interrupt handler
+     * installed), give the MIPI DSI a moment to begin outputting a stable signal,
+     * then re-lock the LT8912B MIPI RX to the incoming video stream.
+     * Matches the fix applied to the Olimex production test firmware. */
+    vTaskDelay(pdMS_TO_TICKS(100));
+
+    /* Re-send video timing to ensure LT8912B has the correct parameters */
+    ESP_RETURN_ON_ERROR(_panel_lt8912b_send_video_setup(panel), TAG, "re-send video setup failed");
+
+    /* Re-detect MIPI input now that DPI is stable */
+    ESP_RETURN_ON_ERROR(_panel_lt8912b_detect_input_mipi(panel), TAG, "re-detect MIPI input failed");
+
+    /* Final MIPI RX Logic Reset to lock onto the stable MIPI stream */
+    ESP_RETURN_ON_ERROR(_panel_lt8912b_mipi_rx_logic_reset(io_main), TAG, "final MIPI RX reset failed");
+
+    ESP_LOGI(TAG, "LT8912B stabilization complete");
+
     return ESP_OK;
 }
 
