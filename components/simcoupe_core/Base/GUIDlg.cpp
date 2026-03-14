@@ -1105,7 +1105,10 @@ protected:
 void OptionsDialog::OnNotify(Window* pWindow_, int nParam_)
 {
     if (pWindow_ == m_pClose)
+    {
+        Options::Save();
         Destroy();
+    }
     else if (pWindow_ == m_pOptions)
     {
         const ListViewItem* pItem = m_pOptions->GetItem();
