@@ -75,8 +75,9 @@ private:
     // sync — dirty tracking is then safe with double buffering.
     alignas(4) uint8_t m_prev[SAM_W * SAM_H];
 
-    bool m_initialized = false;
-    bool m_was_gui     = false;  // true if previous frame was GUI/OSD
+    bool m_initialized  = false;
+    bool m_was_gui      = false;  // true if previous frame was GUI/OSD
+    int  m_clear_borders = 0;     // countdown: clear border rows for N frames after OSD exit
 };
 
 // ── Video namespace (called by SimCoupe core) ─────────────────────────────────
@@ -226,18 +227,14 @@ void ESP32Video::Update(const FrameBuffer& fb)
     // Normal framebuffer (512×192): rendered 1×H 2×V → 512×384, centred in 640×480.
     const bool is_gui = (src_h > SAM_H);
 
-    // Detect GUI→normal transition: clear both framebuffers to black and
-    // invalidate m_prev so dirty-line tracking forces a full repaint.
-    // The OSD occupies gui_off_y=30..449 but the game area starts at OFF_Y=48,
-    // so rows 30-47 would otherwise retain OSD pixels indefinitely.
+    // Detect GUI→normal transition.
     if (!is_gui && m_was_gui) {
-        void* fb0 = nullptr;
-        void* fb1 = nullptr;
-        sim_display_get_framebuffer(&fb0, &fb1);
-        size_t fb_size = DST_W * DST_H * 3;
-        if (fb0) { memset(fb0, 0, fb_size); esp_cache_msync(fb0, fb_size, ESP_CACHE_MSYNC_FLAG_DIR_C2M); }
-        if (fb1) { memset(fb1, 0, fb_size); esp_cache_msync(fb1, fb_size, ESP_CACHE_MSYNC_FLAG_DIR_C2M); }
+        // Invalidate m_prev so dirty-line tracking repaints all 192 SAM lines
+        // this frame, overwriting the OSD pixels in the game area (rows 48-431).
+        // Border rows outside the game area (30-47, 432-449) are cleaned up
+        // NEXT frame via m_clear_borders flag to avoid a one-frame black flash.
         memset(m_prev, 0xFF, sizeof(m_prev));
+        m_clear_borders = 2; // clear for 2 frames (both FBs)
     }
     m_was_gui = is_gui;
 
@@ -330,9 +327,24 @@ void ESP32Video::Update(const FrameBuffer& fb)
                 sim_display_flush_region((size_t)disp_first * DST_STRIDE, flush_bytes);
             }
         }
+        // After OSD exit: zero the border rows (outside game area) that the
+        // game never repaints. Done AFTER the blit so game content is visible.
+        // m_clear_borders counts down over 2 frames (one per FB).
+        if (m_clear_borders > 0) {
+            --m_clear_borders;
+            uint8_t* p = (uint8_t*)dst;
+            // Rows 0..OFF_Y-1 (top border)
+            size_t top_bytes = (size_t)OFF_Y * DST_STRIDE;
+            // Rows (OFF_Y + SAM_H*2)..DST_H-1 (bottom border)
+            size_t bot_start = (size_t)(OFF_Y + SAM_H * 2) * DST_STRIDE;
+            size_t bot_bytes = (size_t)DST_H * DST_STRIDE - bot_start;
+            memset(p, 0, top_bytes);
+            memset(p + bot_start, 0, bot_bytes);
+            esp_cache_msync(p, top_bytes, ESP_CACHE_MSYNC_FLAG_DIR_C2M);
+            esp_cache_msync(p + bot_start, bot_bytes, ESP_CACHE_MSYNC_FLAG_DIR_C2M);
+        }
+
         // Swap once per frame — present back buffer regardless of dirty count.
-        // (On a fully static frame with no dirty lines the display content is
-        //  unchanged, but we still swap so s_back_buf stays in sync.)
         sim_display_swap();
         if (vdiag) {
             vt2 = esp_timer_get_time();
