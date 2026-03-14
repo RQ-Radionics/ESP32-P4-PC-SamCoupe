@@ -168,6 +168,15 @@ menu "SimCoupe Display (LT8912B HDMI Bridge)"
         help
             strm_sw_freq_word[23:16]. 720p@74MHz → byte2=0x6D.
 
+    config SIM_DISPLAY_HDMI_MODE
+        int "HDMI output mode (1=HDMI, 0=DVI)"
+        default 1
+        range 0 1
+        help
+            LT8912B reg 0xB2: 1=HDMI mode, 0=DVI mode.
+            Some PC monitors (HP, Dell) require DVI mode (0) to accept signal.
+            TVs and most modern monitors work with HDMI mode (1).
+
     endif # SIM_DISPLAY_ENABLED
 
 endmenu

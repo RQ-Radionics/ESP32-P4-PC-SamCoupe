@@ -79,6 +79,7 @@ void Sound::FrameUpdate()
 
     // Copy in the DAC samples, then mix SAA and possibly SID too
     memcpy(pbSampleBuffer, pDAC->GetSampleBuffer(), nSize);
+
     MixAudio(pbSampleBuffer, pSAA->GetSampleBuffer(), nSize);
     if (fSidUsed && GetOption(sid)) MixAudio(pbSampleBuffer, pSID->GetSampleBuffer(), nSize);
     if (sp0256_used && GetOption(voicebox)) MixAudio(pbSampleBuffer, pVoiceBox->GetSampleBuffer(), nSize);

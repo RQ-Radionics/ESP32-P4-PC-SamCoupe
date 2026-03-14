@@ -171,8 +171,11 @@ static esp_err_t lt8912b_write_video_timing(void)
                        ((CONFIG_SIM_DISPLAY_HSYNC_POL & 1) << 1);
     ESP_RETURN_ON_ERROR(lt_write(m, 0xAB, sync_pol), TAG, "vt AB sync_pol");
 
-    /* HDMI mode (monitor supports HDMI) */
-    ESP_RETURN_ON_ERROR(lt_write(m, 0xB2, 0x01), TAG, "vt B2 hdmi");
+    /* Output mode: 0x01=HDMI, 0x00=DVI.
+     * Some monitors (e.g. HP PC monitors) require DVI mode to accept signal.
+     * Controlled by CONFIG_SIM_DISPLAY_HDMI_MODE (1=HDMI, 0=DVI). */
+    ESP_RETURN_ON_ERROR(lt_write(m, 0xB2, CONFIG_SIM_DISPLAY_HDMI_MODE ? 0x01 : 0x00),
+                        TAG, "vt B2 mode");
 
 #undef HTOTAL
 #undef VTOTAL

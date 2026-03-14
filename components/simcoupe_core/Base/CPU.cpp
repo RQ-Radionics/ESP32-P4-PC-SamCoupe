@@ -284,14 +284,28 @@ void Run()
             CPU::frame_cycles %= CPU_CYCLES_PER_FRAME;
 
             // Wait for Core 0 to finish the PREVIOUS frame's Sound::FrameUpdate()
-            // before signalling it to start the next one.  This ensures SAA
-            // register writes in the next ExecuteChunk() don't race with
-            // SAADevice::Update() still running on Core 0.
-            // On the very first frame s_sound_done is pre-given, so no stall.
+            // before signalling it to start the next one.
+            int64_t t_snd0 = 0, t_snd1 = 0;
             if (s_sound_start) {
+                t_snd0 = esp_timer_get_time();
                 xSemaphoreTake(s_sound_done, portMAX_DELAY);
+                t_snd1 = esp_timer_get_time();
                 s_sound_turbo = Frame::TurboMode();
                 xSemaphoreGive(s_sound_start);
+            }
+            t2d = esp_timer_get_time();
+
+            // Periodic perf log every 250 frames (~5s)
+            static uint32_t s_perf_frame = 0;
+            s_perf_frame++;
+            if ((s_perf_frame % 250) == 0) {
+                ESP_LOGI(TAG_PERF,
+                         "perf: z80=%lld vid=%lld io=%lld snd_wait=%lld total=%lld (us)",
+                         (long long)(t1 - t0),
+                         (long long)(t2 - t1),
+                         (long long)(t2c - t2b),
+                         (long long)(t_snd1 - t_snd0),
+                         (long long)(t2d - t0));
             }
         }
         int64_t t3 = esp_timer_get_time();
