@@ -84,14 +84,27 @@ Copy `.dsk`, `.mgt`, `.sad`, or `.sdf` disk images to `/sdcard/simcoupe/disks/`.
 |-----|--------|
 | **F1** | Insert disk into Drive 1 |
 | **Shift+F1** | Eject disk from Drive 1 |
+| **Alt+F1** | New blank disk in Drive 1 |
+| **Ctrl+F1** | Save disk in Drive 1 |
 | **F2** | Insert disk into Drive 2 |
 | **Shift+F2** | Eject disk from Drive 2 |
+| **Alt+F2** | New blank disk in Drive 2 |
+| **Ctrl+F2** | Save disk in Drive 2 |
+| **F3** | Tape browser |
+| **Shift+F3** | Eject tape |
+| **F4** | Import data |
+| **Shift+F4** | Export data |
+| **Alt+F4** | Exit emulator |
+| **F5** | Toggle TV aspect ratio (5:4) |
+| **F6** | Toggle graphics smoothing |
+| **Shift+F6** | Toggle motion blur |
+| **F8** | Toggle fullscreen |
+| **F9** | Debugger |
+| **Shift+F9** | Save screenshot (PNG) |
 | **F10** | Options menu |
 | **F11** | NMI (non-maskable interrupt) |
 | **F12** | Reset SAM Coupé |
 | **Ctrl+F12** | Exit emulator |
-| **F9** | Debugger |
-| **Shift+F9** | Save screenshot (PNG) |
 
 ### Loading Software
 
