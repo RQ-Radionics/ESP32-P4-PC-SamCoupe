@@ -29,6 +29,7 @@
 #include <string.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "freertos/semphr.h"
 #include "driver/gpio.h"
 #include "driver/i2c_master.h"
 #include "driver/i2s_std.h"
@@ -49,6 +50,20 @@ static es8311_handle_t    s_es8311      = NULL;
 static i2c_master_bus_handle_t s_i2c_bus = NULL;
 static bool               s_bus_owned   = false;
 static bool               s_initialized = false;
+
+/* Binary semaphore given by the on_sent ISR when DMA finishes one descriptor.
+ * Used by sim_audio_wait_frame_done() for crystal-accurate 50fps throttle. */
+static StaticSemaphore_t  s_frame_done_buf;
+static SemaphoreHandle_t  s_frame_done_sem = NULL;
+
+static IRAM_ATTR bool i2s_on_sent_cb(i2s_chan_handle_t handle,
+                                      i2s_event_data_t *event, void *user_ctx)
+{
+    BaseType_t woken = pdFALSE;
+    if (s_frame_done_sem)
+        xSemaphoreGiveFromISR(s_frame_done_sem, &woken);
+    return woken == pdTRUE;
+}
 
 /* ------------------------------------------------------------------ */
 /* I2S TX channel init                                                  */
@@ -76,6 +91,13 @@ static esp_err_t audio_i2s_init(void)
     ESP_RETURN_ON_ERROR(
         i2s_new_channel(&chan_cfg, &s_i2s_tx, NULL),
         TAG, "i2s_new_channel");
+
+    /* Register on_sent callback — fires from ISR when DMA descriptor sent.
+     * Used by sim_audio_wait_frame_done() for crystal-accurate 50fps throttle. */
+    if (!s_frame_done_sem)
+        s_frame_done_sem = xSemaphoreCreateBinaryStatic(&s_frame_done_buf);
+    i2s_event_callbacks_t cbs = { .on_sent = i2s_on_sent_cb };
+    i2s_channel_register_event_callback(s_i2s_tx, &cbs, NULL);
 
     /* Stereo 16-bit I2S at 22050 Hz.
      * SimCoupe Sound.cpp generates native stereo (L+R interleaved int16_t).
@@ -311,4 +333,13 @@ void sim_audio_deinit(void)
 
     s_initialized = false;
     ESP_LOGI(TAG, "sim_audio de-initialized");
+}
+
+bool sim_audio_wait_frame_done(uint32_t timeout_ms)
+{
+    if (!s_frame_done_sem) return false;
+    TickType_t ticks = (timeout_ms == portMAX_DELAY)
+                       ? portMAX_DELAY
+                       : pdMS_TO_TICKS(timeout_ms);
+    return xSemaphoreTake(s_frame_done_sem, ticks) == pdTRUE;
 }

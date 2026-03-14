@@ -53,6 +53,7 @@ static const char* TAG_PERF = "z80perf";
 #include "Sound.h"
 #include "Tape.h"
 #include "UI.h"
+#include "sim_audio.h"
 
 // ── Core 0 sound task ────────────────────────────────────────────────────────
 // Sound::FrameUpdate() (dominated by SAASound synthesis, ~75ms at 44100Hz,
@@ -263,12 +264,11 @@ void Run()
         if (g_fPaused)
             continue;
 
-        // FlushAudio at the START of the frame — blocks on I2S DMA until
-        // exactly 441 samples are consumed at 22050Hz = 20.000ms per frame.
-        // This is the master clock: crystal-accurate, not CPU-load dependent.
+        // Wait for I2S DMA on_sent callback — fires exactly once per 441 samples
+        // = once per 20.000ms at 22050Hz. Crystal-accurate 50fps master clock.
         // Core 0 is already synthesising the next frame in parallel.
         if (s_sound_start && !s_sound_turbo)
-            Sound::FlushAudio();
+            sim_audio_wait_frame_done(portMAX_DELAY);
 
         int64_t t0 = esp_timer_get_time();
         if (!Debug::IsActive() && !GUI::IsModal())

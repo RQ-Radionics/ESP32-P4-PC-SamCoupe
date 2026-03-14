@@ -99,6 +99,18 @@ i2s_chan_handle_t sim_audio_get_tx_handle(void);
 i2c_master_bus_handle_t sim_audio_get_i2c_bus(void);
 
 /**
+ * @brief Wait until the I2S DMA has finished sending one frame (441 samples).
+ *
+ * Blocks until the on_sent ISR callback fires, which happens exactly once
+ * per DMA descriptor = once per 441 samples = once per 20ms at 22050Hz.
+ * Use this as a crystal-accurate 50fps frame rate limiter.
+ *
+ * @param  timeout_ms  Timeout in ms (portMAX_DELAY = wait forever)
+ * @return true if frame done signal received, false on timeout.
+ */
+bool sim_audio_wait_frame_done(uint32_t timeout_ms);
+
+/**
  * @brief De-initialize and release all audio resources.
  */
 void sim_audio_deinit(void);
