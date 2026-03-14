@@ -200,7 +200,7 @@ void OnRet()
     {
         // If the stack is at or just above the starting position, it should mean we've returned
         // Allow some generous slack for data that may have been on the stack above the address
-        if ((cpu.get_sp() - nStepOutSP) >= 0 && (cpu.get_sp() - nStepOutSP) < 64)
+        if ((cpu.get_sp() - nStepOutSP) < 64)
             Start();
     }
 }
@@ -2754,18 +2754,18 @@ void GfxView::SetAddress(uint16_t wAddr_, bool /*fForceTop_*/)
             {
                 auto b = read_byte(wAddr_++);
 
-                uint8_t bGridBg = m_fGrid ? BLUE_1 : BLACK;
-                uint8_t bBg0 = (u & 1) ? BLACK : bGridBg;
-                uint8_t bBg1 = (u & 1) ? bGridBg : BLACK;
+                uint8_t bGridBg = m_fGrid ? uint8_t(BLUE_1) : uint8_t(BLACK);
+                uint8_t bBg0 = (u & 1) ? uint8_t(BLACK) : bGridBg;
+                uint8_t bBg1 = (u & 1) ? bGridBg : uint8_t(BLACK);
 
-                memset(pb, (b & 0x80) ? WHITE : bBg0, s_uZoom); pb += s_uZoom;
-                memset(pb, (b & 0x40) ? WHITE : bBg1, s_uZoom); pb += s_uZoom;
-                memset(pb, (b & 0x20) ? WHITE : bBg0, s_uZoom); pb += s_uZoom;
-                memset(pb, (b & 0x10) ? WHITE : bBg1, s_uZoom); pb += s_uZoom;
-                memset(pb, (b & 0x08) ? WHITE : bBg0, s_uZoom); pb += s_uZoom;
-                memset(pb, (b & 0x04) ? WHITE : bBg1, s_uZoom); pb += s_uZoom;
-                memset(pb, (b & 0x02) ? WHITE : bBg0, s_uZoom); pb += s_uZoom;
-                memset(pb, (b & 0x01) ? WHITE : bBg1, s_uZoom); pb += s_uZoom;
+                memset(pb, (b & 0x80) ? uint8_t(WHITE) : bBg0, s_uZoom); pb += s_uZoom;
+                memset(pb, (b & 0x40) ? uint8_t(WHITE) : bBg1, s_uZoom); pb += s_uZoom;
+                memset(pb, (b & 0x20) ? uint8_t(WHITE) : bBg0, s_uZoom); pb += s_uZoom;
+                memset(pb, (b & 0x10) ? uint8_t(WHITE) : bBg1, s_uZoom); pb += s_uZoom;
+                memset(pb, (b & 0x08) ? uint8_t(WHITE) : bBg0, s_uZoom); pb += s_uZoom;
+                memset(pb, (b & 0x04) ? uint8_t(WHITE) : bBg1, s_uZoom); pb += s_uZoom;
+                memset(pb, (b & 0x02) ? uint8_t(WHITE) : bBg0, s_uZoom); pb += s_uZoom;
+                memset(pb, (b & 0x01) ? uint8_t(WHITE) : bBg1, s_uZoom); pb += s_uZoom;
             }
             break;
         }

@@ -34,10 +34,9 @@ inline void PressSamKey(int k) { key_matrix[k >> 3] &= ~(1 << (k & 7)); }
 
 struct MAPPED_KEY
 {
-    int nChar;                  // Symbol or HK_ virtual keycode
-    eSamKey nSamMods, nSamKey;  // Up to 2 SAM keys needed to generate the above symbol
-    int nKey, nMods;            // Host scancode and modifiers
-
+    int nChar {};               // Symbol or HK_ virtual keycode
+    eSamKey nSamMods {SK_NONE}, nSamKey {SK_NONE};  // Up to 2 SAM keys needed to generate the above symbol
+    int nKey {}, nMods {};      // Host scancode and modifiers
 };
 
 

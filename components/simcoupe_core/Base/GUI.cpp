@@ -471,7 +471,7 @@ void TextControl::Draw(FrameBuffer& fb)
     if (m_bBackColour)
         fb.FillRect(m_nX - 1, m_nY - 1, GetTextWidth() + 2, 14, m_bBackColour);
 
-    auto colour = IsEnabled() ? m_bColour : GREY_5;
+    uint8_t colour = IsEnabled() ? m_bColour : uint8_t(GREY_5);
     fb.DrawString(m_nX, m_nY, colour, GetText());
 }
 
@@ -679,7 +679,7 @@ void CheckBox::Draw(FrameBuffer& fb)
         fb.FillRect(m_nX - 1, m_nY - 1, BOX_SIZE + PRETEXT_GAP + GetTextWidth() + 2, BOX_SIZE + 2, m_bBackColour);
 
     // Draw the label text
-    auto colour = IsEnabled() ? (IsActive() ? YELLOW_8 : m_bColour) : GREY_5;
+    uint8_t colour = IsEnabled() ? (IsActive() ? uint8_t(YELLOW_8) : m_bColour) : uint8_t(GREY_5);
     fb.DrawString(nX, nY, colour, GetText());
 
     // Draw the empty check box

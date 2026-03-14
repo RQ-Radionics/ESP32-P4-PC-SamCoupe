@@ -91,7 +91,7 @@ struct RS_IDE
     uint8_t bRevision;                  // 0x10 for v1.0, 0x11 for v1.1
     uint8_t bFlags;                     // b0 = halved sector data, b1 = ATAPI (HDF 1.1+)
     uint8_t bOffsetLow, bOffsetHigh;    // Offset from start of file to HDD data
-    uint8_t abReserved[11];             // Must be zero
+    uint8_t abReserved[11] {};          // Must be zero
                                         // Identify data follows: 106 bytes for HDF 1.0, 512 for HDF 1.1+
 };
 

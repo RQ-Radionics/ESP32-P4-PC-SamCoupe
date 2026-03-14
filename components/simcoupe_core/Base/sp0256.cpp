@@ -962,7 +962,7 @@ void sp0256_device::micro()
             /* ------------------------------------------------------------ */
             if (delta)  /* Sign extend */
             {
-                if (value & (1 << (len - 1))) value |= -1 << len;
+                if (value & (1 << (len - 1))) value |= static_cast<int>(~0u << len);
             }
 
             /* ------------------------------------------------------------ */
@@ -984,7 +984,7 @@ void sp0256_device::micro()
             {
                 LOG("--field-> r[%2d] = %.2X -> ", prm, m_filt.r[prm]);
 
-                m_filt.r[prm] &= ~(~0 << shf); /* Clear the old bits.     */
+                m_filt.r[prm] &= ~(~0u << shf); /* Clear the old bits.     */
                 m_filt.r[prm] |= value;        /* Merge in the new bits.  */
 
                 LOG("%.2X\n", m_filt.r[prm]);

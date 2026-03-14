@@ -1264,7 +1264,7 @@ void ImportDialog::OnNotify(Window* pWindow_, int nParam_)
             return;
         }
 
-        unsigned int uPage = (s_uAddr < 0x4000) ? ROM0 : s_uPage;
+        unsigned int uPage = (s_uAddr < 0x4000) ? unsigned(ROM0) : s_uPage;
         unsigned int uOffset = s_uOffset, uLen = 0x400000;  // 4MB max import
         size_t uRead = 0;
 
@@ -1331,7 +1331,7 @@ void ExportDialog::OnNotify(Window* pWindow_, int nParam_)
             return;
         }
 
-        unsigned int uPage = (s_uAddr < 0x4000) ? ROM0 : s_uPage;
+        unsigned int uPage = (s_uAddr < 0x4000) ? unsigned(ROM0) : s_uPage;
         unsigned int uOffset = s_uOffset, uLen = s_uLength;
         size_t uWritten = 0;
 

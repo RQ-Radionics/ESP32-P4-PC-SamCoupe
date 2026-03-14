@@ -216,10 +216,18 @@ target_compile_options(${COMPONENT_LIB} PRIVATE
     -Wno-sign-compare
     -Wno-format
     -Wno-implicit-fallthrough
-    -Wno-implicit-function-declaration
     -Wno-maybe-uninitialized
+    # -Wno-implicit-function-declaration is C-only — apply only to C files
+    $<$<COMPILE_LANGUAGE:C>:-Wno-implicit-function-declaration>
     # libspectrum C files need string.h
     $<$<COMPILE_LANGUAGE:C>:-include string.h>
+)
+
+# Suppress warnings in vendored libspectrum C files (don't modify upstream code)
+set_source_files_properties(
+    extern/libspectrum/rzx.c
+    extern/libspectrum/snapshot.c
+    PROPERTIES COMPILE_FLAGS "-Wno-unused-but-set-variable -Wno-enum-int-mismatch"
 )
 
 # SAASound needs its sample rate defined
