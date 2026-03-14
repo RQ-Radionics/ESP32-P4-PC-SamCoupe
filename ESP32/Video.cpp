@@ -226,10 +226,17 @@ void ESP32Video::Update(const FrameBuffer& fb)
     // Normal framebuffer (512×192): rendered 1×H 2×V → 512×384, centred in 640×480.
     const bool is_gui = (src_h > SAM_H);
 
-    // Detect GUI→normal transition: invalidate m_prev so dirty-line tracking
-    // forces a full repaint of the SAM area, overwriting any GUI pixels left
-    // in the framebuffer from the previous OSD frame.
+    // Detect GUI→normal transition: clear both framebuffers to black and
+    // invalidate m_prev so dirty-line tracking forces a full repaint.
+    // The OSD occupies gui_off_y=30..449 but the game area starts at OFF_Y=48,
+    // so rows 30-47 would otherwise retain OSD pixels indefinitely.
     if (!is_gui && m_was_gui) {
+        void* fb0 = nullptr;
+        void* fb1 = nullptr;
+        sim_display_get_framebuffer(&fb0, &fb1);
+        size_t fb_size = DST_W * DST_H * 3;
+        if (fb0) { memset(fb0, 0, fb_size); esp_cache_msync(fb0, fb_size, ESP_CACHE_MSYNC_FLAG_DIR_C2M); }
+        if (fb1) { memset(fb1, 0, fb_size); esp_cache_msync(fb1, fb_size, ESP_CACHE_MSYNC_FLAG_DIR_C2M); }
         memset(m_prev, 0xFF, sizeof(m_prev));
     }
     m_was_gui = is_gui;
