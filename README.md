@@ -82,18 +82,41 @@ Copy `.dsk`, `.mgt`, `.sad`, or `.sdf` disk images to `/sdcard/simcoupe/disks/`.
 
 | Key | Action |
 |-----|--------|
-| **F1** | Reset SAM Coupé |
-| **F10** | Toggle turbo mode |
-| **F12** | Open SimCoupe menu (insert disks, options, etc.) |
-| **Scroll Lock** | Toggle sound on/off |
-| **Pause** | Pause emulation |
+| **F1** | Insert disk into Drive 1 |
+| **Shift+F1** | Eject disk from Drive 1 |
+| **F2** | Insert disk into Drive 2 |
+| **Shift+F2** | Eject disk from Drive 2 |
+| **F10** | Options menu |
+| **F11** | NMI (non-maskable interrupt) |
+| **F12** | Reset SAM Coupé |
+| **Ctrl+F12** | Exit emulator |
+| **F9** | Debugger |
+| **Shift+F9** | Save screenshot (PNG) |
 
 ### Loading Software
 
-1. Press **F12** to open the menu
-2. Select **File → Insert Disk 1**
-3. Navigate to your disk image and press Enter
-4. The SAM Coupé will auto-boot from the disk (or type `BOOT` in BASIC)
+1. Press **F1** to open the disk browser for Drive 1
+2. Navigate to your disk image and press Enter
+3. The SAM Coupé will auto-boot from the disk (or type `BOOT` in BASIC)
+
+## Video Output
+
+| Parameter | Value |
+|-----------|-------|
+| Resolution | 1280×720 (720p) |
+| Pixel clock | 80 MHz (PLL_F240M/3, exact) |
+| Refresh | ~60 Hz (htotal=1650, vtotal=808) |
+| Bridge | LT8912B MIPI DSI → HDMI |
+| SAM area | 512×192 scaled 2×H 3×V → 1024×576, centred |
+| OSD area | 512×384 scaled 2×H 1.5×V → 1024×576, centred |
+
+## Audio Output
+
+| Parameter | Value |
+|-----------|-------|
+| Codec | ES8311 via I2S |
+| Sample rate | 22050 Hz mono |
+| SAA-1099 oversample | 2× |
 
 ## Performance
 
@@ -103,15 +126,15 @@ Measured on Olimex ESP32-P4-PC (ESP32-P4 @ 400 MHz):
 |--------|-------|
 | Emulation speed | **100% (50 fps stable)** |
 | Z80 execution | ~12.5 ms/frame (Core 1) |
-| Sound synthesis | ~8 ms/frame (Core 0, overlapped) |
+| Sound synthesis | ~4 ms/frame (Core 0, overlapped) |
 | Video blit | ~2 ms/frame (dirty-line tracking) |
 
 ## Credits
 
 - **SimCoupe** original emulator by [Simon Owen](https://github.com/simonowen/simcoupe)
 - **SAASound** SAA-1099 emulation by [Dave Hooper](https://github.com/stripwax/SAASound)
-- **ESP32-P4-PC** reference port based on [esp32-mos](https://github.com/queru/esp32-mos)
-- ESP32 port by Ramon Martinez
+- **LT8912B driver** based on Linux kernel `drivers/gpu/drm/bridge/lontium-lt8912b.c`
+- ESP32 port by Ramon Martinez (RQ-Radionics / Jorge Fuertes)
 
 ## License
 
